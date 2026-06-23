@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Launch main",
+      "request": "launch",
+      "mainClass": "main",
+      "vmArgs": "--module-path \"C:\\Program Files\\javafx-sdk-26.0.1\\lib\" --add-modules javafx.controls --enable-native-access=javafx.graphics"
+    }
+  ]
+}
