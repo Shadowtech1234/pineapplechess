@@ -14,7 +14,7 @@ public class Boardview extends GridPane {
     public Boardview() {
         setPrefSize(TILE_SIZE * 8, TILE_SIZE * 8);
 
-        //code to create the board
+        //code to create the board  
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 StackPane square = new StackPane();
