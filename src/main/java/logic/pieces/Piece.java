@@ -23,6 +23,6 @@ public abstract class Piece {
 
     public abstract String getType();
 
-    public abstract List<Move> getlegalMoves(Board board, int row, int col);
+    public abstract List<Move> getLegalMoves(Board board, int row, int col);
 
 }

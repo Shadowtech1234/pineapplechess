@@ -5,13 +5,15 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import ui.Boardview;
+import logic.Chessgame;
 
 public class main extends Application {
 
     @Override
 
     public void start(Stage stage) {
-        Boardview board = new Boardview();
+        Chessgame game = new Chessgame();
+        Boardview board = new Boardview(game);
 
         BorderPane root = new BorderPane();
         root.setCenter(board);
