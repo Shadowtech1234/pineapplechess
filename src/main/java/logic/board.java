@@ -53,6 +53,9 @@ public class Board {
     public int enPassantRow = -1;
     public int enPassantCol = -1;
 
+    //promotion
+    
+
 
     public boolean hasKingMoved(Piece.Color color) {
         return (color == Piece.Color.WHITE) ? whiteKingMoved : blackKingMoved;

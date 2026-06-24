@@ -25,7 +25,13 @@ public class Pawn extends Piece {
         // Forward move
         int r1 = row + direction;
         if (board.inBounds(r1, col) && board.getPiece(r1, col) == null) {
-            moves.add(new Move(row, col, r1, col, null));
+            if (r1 == 0 || r1 == 7) {
+                Move m = new Move(row, col, r1, col, null);
+                m.isPromotion = true;
+                moves.add(m);
+            } else {
+                moves.add(new Move(row, col, r1, col, null));
+            }
 
             // Double move
             int r2 = row + 2 * direction;
@@ -42,7 +48,7 @@ public class Pawn extends Piece {
         // Captures
         int[][] caps = {{direction, 1}, {direction, -1}};
         for (int[] c : caps) {
-            
+
             int r = row + c[0];
             int cc = col + c[1];
 
@@ -50,7 +56,13 @@ public class Pawn extends Piece {
 
             Piece target = board.getPiece(r, cc);
             if (target != null && target.getColor() != this.color) {
-                moves.add(new Move(row, col, r, cc, target));
+                if (r == 0 || r == 7) {
+                    Move m = new Move(row, col, r, cc, target);
+                    m.isPromotion = true;
+                    moves.add(m);
+                } else {
+                    moves.add(new Move(row, col, r, cc, target));
+                }
             }
         }
 

@@ -9,6 +9,9 @@ public class Move {
     public final boolean isCastling;
     public final boolean isEnPassant;
 
+    //promotion
+    public boolean isPromotion = false;
+
     public Move(int startRow, int startCol, int endRow, int endCol, Piece capturedPiece) {
         this(startRow, startCol, endRow, endCol, capturedPiece, false, false);
     }

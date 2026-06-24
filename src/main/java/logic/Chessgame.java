@@ -36,6 +36,13 @@ public class Chessgame {
         board.setPiece(move.endRow, move.endCol, movingPiece);
         board.setPiece(move.startRow, move.startCol, null);
 
+        if (move.isPromotion) {
+            board.setPiece(move.endRow, move.endCol,
+                    new logic.pieces.Queen(turn));
+            turn = (turn == Piece.Color.WHITE) ? Piece.Color.BLACK : Piece.Color.WHITE;
+            return true;
+        }
+
         // En passant capture
         if (move.isEnPassant) {
             board.setPiece(move.startRow, move.endCol, null);
