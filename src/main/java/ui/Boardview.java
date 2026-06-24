@@ -8,6 +8,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
@@ -33,9 +35,23 @@ public class Boardview extends GridPane {
     private int selectedRow = -1;
     private int selectedCol = -1;
     private List<Move> legalMoves = new ArrayList<>();
+    private ListView<String> moveList = new ListView<>();
 
     public Boardview(Chessgame game) {
         this.game = game;
+        moveList.setStyle("-fx-font-size: 16px;");
+        moveList.setCellFactory(lv -> {
+            ListCell<String> cell = new ListCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty ? null : item);
+                }
+            };
+            cell.setStyle("-fx-padding: 8 12 8 12;");
+            return cell;
+        });
+        updateMoveList();
         buildBoard();
     }
 
@@ -98,7 +114,7 @@ public class Boardview extends GridPane {
             if (p != null && p.getColor() == game.getTurn()) {
                 selectedRow = row;
                 selectedCol = col;
-                legalMoves = p.getLegalMoves(game.getBoard(), row, col);
+                legalMoves = game.getLegalMovesFiltered(row, col);
             }
         } else {
             Move move = null;
@@ -125,6 +141,7 @@ public class Boardview extends GridPane {
 
             if (game.makeMove(move)) {
                 System.out.println("Move made");
+                updateMoveList();
                 if (game.isCheckmate(game.getTurn())) {
                     showCheckmateDialog(
                         game.getTurn() == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE
@@ -209,6 +226,25 @@ public class Boardview extends GridPane {
 
     public void refresh() {
         buildBoard();
+        updateMoveList();
+    }
+
+    public ListView<String> getMoveList() {
+        return moveList;
+    }
+
+    private void updateMoveList() {
+        List<String> moves = game.getHistory().getMoves();
+        List<String> formatted = new ArrayList<>();
+        for (int i = 0; i < moves.size(); i += 2) {
+            int moveNumber = (i / 2) + 1;
+            String line = moveNumber + ". " + moves.get(i);
+            if (i + 1 < moves.size()) {
+                line += "    " + moves.get(i + 1);
+            }
+            formatted.add(line);
+        }
+        moveList.getItems().setAll(formatted);
     }
 
     private Image loadPieceImage(String fileName) {

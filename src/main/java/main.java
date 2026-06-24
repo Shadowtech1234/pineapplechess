@@ -17,8 +17,9 @@ public class main extends Application {
 
         BorderPane root = new BorderPane();
         root.setCenter(board);
+        root.setRight(board.getMoveList());
 
-        Scene scnene = new Scene(root, 640, 640);
+        Scene scnene = new Scene(root, 840, 640);
 
         stage.setTitle("Pineapple Chess");
         stage.setScene(scnene);

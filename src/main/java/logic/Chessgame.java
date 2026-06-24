@@ -1,5 +1,6 @@
 package logic;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import logic.pieces.King;
@@ -29,7 +30,6 @@ public class Chessgame {
     }
 
     public boolean makeMove(Move move) {
-        
         if (!isLegalMove(move)) return false;
 
         // Reset en passant target before applying a new move.
@@ -48,6 +48,8 @@ public class Chessgame {
             }
             board.setPiece(move.endRow, move.endCol, promotion);
             turn = (turn == Piece.Color.WHITE) ? Piece.Color.BLACK : Piece.Color.WHITE;
+            String notation = MoveNotation.toAlgebraic(this, move);
+            history.add(notation);
             return true;
         }
 
@@ -101,6 +103,8 @@ public class Chessgame {
         }
 
         turn = (turn == Piece.Color.WHITE) ? Piece.Color.BLACK : Piece.Color.WHITE;
+        String notation = MoveNotation.toAlgebraic(this, move);
+        history.add(notation);
         return true;
     }
 
@@ -161,9 +165,30 @@ public class Chessgame {
         return true;
     }
 
+    public List<Move> getLegalMovesFiltered(int row, int col) {
+        Piece p = board.getPiece(row, col);
+        if (p == null || p.getColor() != turn) return new ArrayList<>();
+
+        List<Move> raw = p.getLegalMoves(board, row, col);
+        List<Move> filtered = new ArrayList<>();
+
+        for (Move m : raw) {
+            Board copy = board.copy();
+            copy.applyMove(m);
+
+            Chessgame sim = new Chessgame(copy, turn);
+            if (!sim.isInCheck(turn)) {
+                filtered.add(m);
+            }
+        }
+
+        return filtered;
+    }
+
     public void reset() {
         board = new Board();
         turn = Piece.Color.WHITE;
+        history.clear();
     }
 
     public boolean isLegalMove(Move move) {
@@ -187,6 +212,12 @@ public class Chessgame {
         if (sim.isInCheck(turn)) return false;
 
         return true;
+    }
+
+    private MoveHistory history = new MoveHistory();
+
+    public MoveHistory getHistory() {
+        return history;
     }
 
 
