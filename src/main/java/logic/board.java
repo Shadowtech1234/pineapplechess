@@ -15,7 +15,11 @@ public class Board {
     private Piece[][] board = new Piece[8][8];
 
     public Board() {
-        setupStartingPosition();
+        this(false);
+    }
+
+    public Board(boolean empty) {
+        if (!empty) setupStartingPosition();
     }
 
     public Piece getPiece(int row, int col) {
@@ -54,7 +58,7 @@ public class Board {
     public int enPassantCol = -1;
 
     //promotion
-    
+
 
 
     public boolean hasKingMoved(Piece.Color color) {
@@ -66,6 +70,49 @@ public class Board {
             return kingSide ? whiteRookRightMoved : whiteRookLeftMoved;
         else
             return kingSide ? blackRookRightMoved : blackRookLeftMoved;
+    }
+
+    public void applyMove(Move move) {
+        Piece movingPiece = getPiece(move.startRow, move.startCol);
+        setPiece(move.endRow, move.endCol, movingPiece);
+        setPiece(move.startRow, move.startCol, null);
+
+        if (move.isEnPassant) {
+            setPiece(move.startRow, move.endCol, null);
+        }
+
+        if (move.isCastling) {
+            if (move.endCol == 6) {
+                setPiece(move.startRow, 5, getPiece(move.startRow, 7));
+                setPiece(move.startRow, 7, null);
+            } else {
+                setPiece(move.startRow, 3, getPiece(move.startRow, 0));
+                setPiece(move.startRow, 0, null);
+            }
+        }
+
+        if (move.isPromotion) {
+            setPiece(move.endRow, move.endCol,
+                    move.promotionPiece != null ? move.promotionPiece : new Queen(movingPiece.getColor()));
+        }
+    }
+
+    public Board copy() {
+        Board b = new Board(true);
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                b.board[r][c] = this.board[r][c];
+            }
+        }
+        b.whiteKingMoved = this.whiteKingMoved;
+        b.blackKingMoved = this.blackKingMoved;
+        b.whiteRookLeftMoved = this.whiteRookLeftMoved;
+        b.whiteRookRightMoved = this.whiteRookRightMoved;
+        b.blackRookLeftMoved = this.blackRookLeftMoved;
+        b.blackRookRightMoved = this.blackRookRightMoved;
+        b.enPassantRow = this.enPassantRow;
+        b.enPassantCol = this.enPassantCol;
+        return b;
     }
 
     public boolean isSquareAttacked(int row, int col, Piece.Color attackerColor) {

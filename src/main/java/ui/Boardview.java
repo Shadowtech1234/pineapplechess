@@ -4,15 +4,27 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import logic.Chessgame;
 import logic.Move;
+import logic.pieces.Bishop;
+import logic.pieces.Knight;
 import logic.pieces.Piece;
+import logic.pieces.Queen;
+import logic.pieces.Rook;
 
 public class Boardview extends GridPane {
     private static final int TILE_SIZE = 80; //square size
@@ -101,8 +113,23 @@ public class Boardview extends GridPane {
                         game.getBoard().getPiece(row, col));
             }
 
+            if (move.isPromotion) {
+                Piece promoted = showPromotionDialog(game.getTurn());
+                if (promoted == null) {
+                    promoted = new Queen(game.getTurn());
+                }
+                move = new Move(move.startRow, move.startCol, move.endRow, move.endCol,
+                        move.capturedPiece, move.isCastling, move.isEnPassant, promoted);
+                move.isPromotion = true;
+            }
+
             if (game.makeMove(move)) {
                 System.out.println("Move made");
+                if (game.isCheckmate(game.getTurn())) {
+                    showCheckmateDialog(
+                        game.getTurn() == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE
+                    );
+                }
             } else {
                 System.out.println("Illegal move");
             }
@@ -113,6 +140,71 @@ public class Boardview extends GridPane {
         }
 
         refresh();
+    }
+
+    private Piece showPromotionDialog(Piece.Color color) {
+        Stage dialog = new Stage();
+        dialog.setTitle("Choose Promotion");
+        dialog.initModality(Modality.APPLICATION_MODAL);
+
+        HBox box = new HBox(10);
+        box.setAlignment(Pos.CENTER);
+
+        Button queen = new Button("Queen");
+        Button rook = new Button("Rook");
+        Button bishop = new Button("Bishop");
+        Button knight = new Button("Knight");
+
+        final Piece[] choice = new Piece[1];
+
+        queen.setOnAction(e -> {
+            choice[0] = new Queen(color);
+            dialog.close();
+        });
+        rook.setOnAction(e -> {
+            choice[0] = new Rook(color);
+            dialog.close();
+        });
+        bishop.setOnAction(e -> {
+            choice[0] = new Bishop(color);
+            dialog.close();
+        });
+        knight.setOnAction(e -> {
+            choice[0] = new Knight(color);
+            dialog.close();
+        });
+
+        box.getChildren().addAll(queen, rook, bishop, knight);
+
+        Scene scene = new Scene(box, 300, 100);
+        dialog.setScene(scene);
+        dialog.showAndWait();
+
+        return choice[0];
+    }
+
+    private void showCheckmateDialog(Piece.Color winner) {
+        Stage dialog = new Stage();
+        dialog.setTitle("Checkmate");
+        dialog.initModality(Modality.APPLICATION_MODAL);
+
+        VBox box = new VBox(10);
+        box.setAlignment(Pos.CENTER);
+
+        Label label = new Label("Checkmate! " + winner + " wins!");
+        Button reset = new Button("Reset Game");
+
+        reset.setOnAction(e -> {
+            game.reset();
+            refresh();
+            dialog.close();
+        });
+
+        box.getChildren().addAll(label, reset);
+
+        Scene scene = new Scene(box, 300, 150);
+        dialog.setScene(scene);
+        dialog.show();
     }
 
     public void refresh() {

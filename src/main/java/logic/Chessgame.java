@@ -15,6 +15,11 @@ public class Chessgame {
         turn = Piece.Color.WHITE;
     }
 
+    public Chessgame(Board board, Piece.Color turn) {
+        this.board = board;
+        this.turn = turn;
+    }
+
     public Board getBoard() {
         return board;
     }
@@ -37,8 +42,11 @@ public class Chessgame {
         board.setPiece(move.startRow, move.startCol, null);
 
         if (move.isPromotion) {
-            board.setPiece(move.endRow, move.endCol,
-                    new logic.pieces.Queen(turn));
+            Piece promotion = move.promotionPiece;
+            if (promotion == null) {
+                promotion = new logic.pieces.Queen(turn);
+            }
+            board.setPiece(move.endRow, move.endCol, promotion);
             turn = (turn == Piece.Color.WHITE) ? Piece.Color.BLACK : Piece.Color.WHITE;
             return true;
         }
@@ -96,17 +104,89 @@ public class Chessgame {
         return true;
     }
 
+    public int[] findKing(Piece.Color color) {
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = board.getPiece(r, c);
+                if (p instanceof King && p.getColor() == color) {
+                    return new int[]{r, c};
+                }
+            }
+        }
+        return null;
+    }
+
+    public boolean isSquareAttacked(int row, int col, Piece.Color byColor) {
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = board.getPiece(r, c);
+                if (p != null && p.getColor() == byColor) {
+                    List<Move> moves = p.getLegalMoves(board, r, c);
+                    for (Move m : moves) {
+                        if (m.endRow == row && m.endCol == col)
+                            return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean isInCheck(Piece.Color color) {
+        int[] kingPos = findKing(color);
+        if (kingPos == null) return false;
+        Piece.Color attacker = (color == Piece.Color.WHITE) ? Piece.Color.BLACK : Piece.Color.WHITE;
+        return isSquareAttacked(kingPos[0], kingPos[1], attacker);
+    }
+
+    public boolean isCheckmate(Piece.Color color) {
+        if (!isInCheck(color)) return false;
+
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = board.getPiece(r, c);
+                if (p != null && p.getColor() == color) {
+                    List<Move> moves = p.getLegalMoves(board, r, c);
+                    for (Move m : moves) {
+                        Board copy = board.copy();
+                        copy.applyMove(m);
+                        Chessgame sim = new Chessgame(copy, color);
+                        if (!sim.isInCheck(color)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public void reset() {
+        board = new Board();
+        turn = Piece.Color.WHITE;
+    }
+
     public boolean isLegalMove(Move move) {
         Piece p = board.getPiece(move.startRow, move.startCol);
         if (p == null) return false;
         if (p.getColor() != turn) return false;
 
         List<Move> legal = p.getLegalMoves(board, move.startRow, move.startCol);
+        boolean found = false;
         for (Move m : legal) {
-            if (m.endRow == move.endRow && m.endCol == move.endCol)
-                return true;
+            if (m.endRow == move.endRow && m.endCol == move.endCol) {
+                found = true;
+                break;
+            }
         }
-        return false;
+        if (!found) return false;
+
+        Board copy = board.copy();
+        copy.applyMove(move);
+        Chessgame sim = new Chessgame(copy, turn);
+        if (sim.isInCheck(turn)) return false;
+
+        return true;
     }
 
 
