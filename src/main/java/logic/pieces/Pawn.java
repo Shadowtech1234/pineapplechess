@@ -34,9 +34,15 @@ public class Pawn extends Piece {
             }
         }
 
+        // En passant
+        if (board.enPassantRow == row + direction && Math.abs(board.enPassantCol - col) == 1) {
+            moves.add(new Move(row, col, board.enPassantRow, board.enPassantCol, board.getPiece(row, board.enPassantCol), false, true));
+        }
+
         // Captures
         int[][] caps = {{direction, 1}, {direction, -1}};
         for (int[] c : caps) {
+            
             int r = row + c[0];
             int cc = col + c[1];
 

@@ -27,8 +27,19 @@ public class Chessgame {
         
         if (!isLegalMove(move)) return false;
 
-        board.setPiece(move.endRow, move.endCol, board.getPiece(move.startRow, move.startCol));
+        // Reset en passant target before applying a new move.
+        board.enPassantRow = -1;
+        board.enPassantCol = -1;
+
+        Piece movingPiece = board.getPiece(move.startRow, move.startCol);
+
+        board.setPiece(move.endRow, move.endCol, movingPiece);
         board.setPiece(move.startRow, move.startCol, null);
+
+        // En passant capture
+        if (move.isEnPassant) {
+            board.setPiece(move.startRow, move.endCol, null);
+        }
 
         // Castling
         if (move.isCastling) {
@@ -51,8 +62,13 @@ public class Chessgame {
             }
         }
 
+        // Pawn double move can create an en passant target.
+        if (movingPiece instanceof logic.pieces.Pawn && Math.abs(move.endRow - move.startRow) == 2) {
+            board.enPassantRow = (move.startRow + move.endRow) / 2;
+            board.enPassantCol = move.startCol;
+        }
+
         // Track king and rook movement for castling rights
-        Piece movingPiece = board.getPiece(move.endRow, move.endCol);
         if (movingPiece instanceof King) {
             if (movingPiece.getColor() == Piece.Color.WHITE) {
                 board.whiteKingMoved = true;

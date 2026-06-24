@@ -36,6 +36,11 @@ public class Board {
         return p.getLegalMoves(this, row, col);
     }
 
+
+    //////////////
+    public int theenashs_constant = 1;
+    ////////////
+
     //castling variables at the start the game
     public boolean whiteKingMoved = false;
     public boolean blackKingMoved = false;
@@ -43,6 +48,11 @@ public class Board {
     public boolean whiteRookRightMoved = false;
     public boolean blackRookLeftMoved = false;
     public boolean blackRookRightMoved = false;
+
+    // en passant variables at the start of the game
+    public int enPassantRow = -1;
+    public int enPassantCol = -1;
+
 
     public boolean hasKingMoved(Piece.Color color) {
         return (color == Piece.Color.WHITE) ? whiteKingMoved : blackKingMoved;
