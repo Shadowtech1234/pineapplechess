@@ -6,12 +6,18 @@ public class Move {
     public final int startRow, startCol;
     public final int endRow, endCol;
     public final Piece capturedPiece;
+    public final boolean isCastling;
 
     public Move(int startRow, int startCol, int endRow, int endCol, Piece capturedPiece) {
+        this(startRow, startCol, endRow, endCol, capturedPiece, false);
+    }
+
+    public Move(int startRow, int startCol, int endRow, int endCol, Piece capturedPiece, boolean isCastling) {
         this.startRow = startRow;
         this.startCol = startCol;
         this.endRow = endRow;
         this.endCol = endCol;
         this.capturedPiece = capturedPiece;
+        this.isCastling = isCastling;
     }
 }

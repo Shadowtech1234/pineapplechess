@@ -36,6 +36,80 @@ public class Board {
         return p.getLegalMoves(this, row, col);
     }
 
+    //castling variables at the start the game
+    public boolean whiteKingMoved = false;
+    public boolean blackKingMoved = false;
+    public boolean whiteRookLeftMoved = false;
+    public boolean whiteRookRightMoved = false;
+    public boolean blackRookLeftMoved = false;
+    public boolean blackRookRightMoved = false;
+
+    public boolean hasKingMoved(Piece.Color color) {
+        return (color == Piece.Color.WHITE) ? whiteKingMoved : blackKingMoved;
+    }
+
+    public boolean hasRookMoved(Piece.Color color, boolean kingSide) {
+        if (color == Piece.Color.WHITE)
+            return kingSide ? whiteRookRightMoved : whiteRookLeftMoved;
+        else
+            return kingSide ? blackRookRightMoved : blackRookLeftMoved;
+    }
+
+    public boolean isSquareAttacked(int row, int col, Piece.Color attackerColor) {
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = getPiece(r, c);
+                if (p == null || p.getColor() != attackerColor) continue;
+
+                String type = p.getType();
+                int rowDiff = row - r;
+                int colDiff = col - c;
+                int absRowDiff = Math.abs(rowDiff);
+                int absColDiff = Math.abs(colDiff);
+
+                switch (type) {
+                    case "pawn":
+                        if (attackerColor == Piece.Color.WHITE) {
+                            if (r - 1 == row && (c - 1 == col || c + 1 == col)) return true;
+                        } else {
+                            if (r + 1 == row && (c - 1 == col || c + 1 == col)) return true;
+                        }
+                        break;
+                    case "knight":
+                        if ((absRowDiff == 2 && absColDiff == 1) || (absRowDiff == 1 && absColDiff == 2)) return true;
+                        break;
+                    case "bishop":
+                        if (absRowDiff == absColDiff && absRowDiff > 0 && clearPath(r, c, row, col)) return true;
+                        break;
+                    case "rook":
+                        if (((rowDiff == 0) ^ (colDiff == 0)) && clearPath(r, c, row, col)) return true;
+                        break;
+                    case "queen":
+                        if (((absRowDiff == absColDiff) || (rowDiff == 0) || (colDiff == 0)) && clearPath(r, c, row, col)) return true;
+                        break;
+                    case "king":
+                        if (Math.max(absRowDiff, absColDiff) == 1) return true;
+                        break;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean clearPath(int startRow, int startCol, int endRow, int endCol) {
+        int rowStep = Integer.compare(endRow, startRow);
+        int colStep = Integer.compare(endCol, startCol);
+        int r = startRow + rowStep;
+        int c = startCol + colStep;
+
+        while (r != endRow || c != endCol) {
+            if (getPiece(r, c) != null) return false;
+            r += rowStep;
+            c += colStep;
+        }
+        return true;
+    }
+
     public void setupStartingPosition() {
         //pawns
         for (int c = 0; c < 8; c++) {

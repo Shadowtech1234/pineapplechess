@@ -37,6 +37,40 @@ public class King extends Piece {
             }
         }
 
+        // Castling
+        if (!board.hasKingMoved(color)) {
+            Piece.Color opponent = (color == Piece.Color.WHITE) ? Piece.Color.BLACK : Piece.Color.WHITE;
+            if (!board.isSquareAttacked(row, col, opponent)) {
+                // kingside
+                if (!board.hasRookMoved(color, true) &&
+                    board.getPiece(row, col + 1) == null &&
+                    board.getPiece(row, col + 2) == null) {
+
+                    Piece rook = board.getPiece(row, col + 3);
+                    if (rook != null && "rook".equals(rook.getType()) && rook.getColor() == color &&
+                        !board.isSquareAttacked(row, col + 1, opponent) &&
+                        !board.isSquareAttacked(row, col + 2, opponent)) {
+                        moves.add(new Move(row, col, row, col + 2, null, true));
+                    }
+                }
+
+                // queenside
+                if (!board.hasRookMoved(color, false) &&
+                    board.getPiece(row, col - 1) == null &&
+                    board.getPiece(row, col - 2) == null &&
+                    board.getPiece(row, col - 3) == null) {
+
+                    Piece rook = board.getPiece(row, col - 4);
+                    if (rook != null && "rook".equals(rook.getType()) && rook.getColor() == color &&
+                        !board.isSquareAttacked(row, col - 1, opponent) &&
+                        !board.isSquareAttacked(row, col - 2, opponent)) {
+                        moves.add(new Move(row, col, row, col - 2, null, true));
+                    }
+                }
+            }
+        }
+
         return moves;
     }
 }
+

@@ -89,8 +89,17 @@ public class Boardview extends GridPane {
                 legalMoves = p.getLegalMoves(game.getBoard(), row, col);
             }
         } else {
-            Move move = new Move(selectedRow, selectedCol, row, col,
-                    game.getBoard().getPiece(row, col));
+            Move move = null;
+            for (Move m : legalMoves) {
+                if (m.endRow == row && m.endCol == col) {
+                    move = m;
+                    break;
+                }
+            }
+            if (move == null) {
+                move = new Move(selectedRow, selectedCol, row, col,
+                        game.getBoard().getPiece(row, col));
+            }
 
             if (game.makeMove(move)) {
                 System.out.println("Move made");
