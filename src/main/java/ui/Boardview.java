@@ -142,7 +142,15 @@ public class Boardview extends GridPane {
             if (game.makeMove(move)) {
                 System.out.println("Move made");
                 updateMoveList();
-                if (game.isCheckmate(game.getTurn())) {
+                if (game.isFiftyMoveDraw()) {
+                    showDrawDialog("50-move rule");
+                } else if (game.isThreefoldRepetition()) {
+                    showDrawDialog("Threefold repetition");
+                } else if (game.isStalemate()) {
+                    showDrawDialog("Stalemate");
+                } else if (game.isInsufficientMaterial()) {
+                    showDrawDialog("Insufficient material");
+                } else if (game.isCheckmate(game.getTurn())) {
                     showCheckmateDialog(
                         game.getTurn() == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE
                     );
@@ -209,6 +217,30 @@ public class Boardview extends GridPane {
         box.setAlignment(Pos.CENTER);
 
         Label label = new Label("Checkmate! " + winner + " wins!");
+        Button reset = new Button("Reset Game");
+
+        reset.setOnAction(e -> {
+            game.reset();
+            refresh();
+            dialog.close();
+        });
+
+        box.getChildren().addAll(label, reset);
+
+        Scene scene = new Scene(box, 300, 150);
+        dialog.setScene(scene);
+        dialog.show();
+    }
+
+    private void showDrawDialog(String reason) {
+        Stage dialog = new Stage();
+        dialog.setTitle("Draw");
+        dialog.initModality(Modality.APPLICATION_MODAL);
+
+        VBox box = new VBox(10);
+        box.setAlignment(Pos.CENTER);
+
+        Label label = new Label("Draw: " + reason);
         Button reset = new Button("Reset Game");
 
         reset.setOnAction(e -> {

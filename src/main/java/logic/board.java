@@ -115,6 +115,46 @@ public class Board {
         return b;
     }
 
+    public String toFEN(Piece.Color turn) {
+        StringBuilder sb = new StringBuilder();
+
+        for (int r = 0; r < 8; r++) {
+            int empty = 0;
+            for (int c = 0; c < 8; c++) {
+                Piece p = board[r][c];
+                if (p == null) {
+                    empty++;
+                } else {
+                    if (empty > 0) {
+                        sb.append(empty);
+                        empty = 0;
+                    }
+                    sb.append(pieceToFEN(p));
+                }
+            }
+            if (empty > 0) sb.append(empty);
+            if (r < 7) sb.append('/');
+        }
+
+        sb.append(' ');
+        sb.append(turn == Piece.Color.WHITE ? 'w' : 'b');
+
+        return sb.toString();
+    }
+
+    private char pieceToFEN(Piece p) {
+        char c;
+        switch (p.getType()) {
+            case "king": c = 'k'; break;
+            case "queen": c = 'q'; break;
+            case "rook": c = 'r'; break;
+            case "bishop": c = 'b'; break;
+            case "knight": c = 'n'; break;
+            default: c = 'p';
+        }
+        return p.getColor() == Piece.Color.WHITE ? Character.toUpperCase(c) : c;
+    }
+
     public boolean isSquareAttacked(int row, int col, Piece.Color attackerColor) {
         for (int r = 0; r < 8; r++) {
             for (int c = 0; c < 8; c++) {

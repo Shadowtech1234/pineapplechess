@@ -1,7 +1,9 @@
 package logic;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import logic.pieces.King;
 import logic.pieces.Piece;
@@ -10,15 +12,19 @@ import logic.pieces.Rook;
 public class Chessgame {
     private Board board;
     private Piece.Color turn;
+    private int halfMoveClock = 0;
+    private Map<String, Integer> positionCounts = new HashMap<>();
 
     public Chessgame() {
         board = new Board();
         turn = Piece.Color.WHITE;
+        recordPosition();
     }
 
     public Chessgame(Board board, Piece.Color turn) {
         this.board = board;
         this.turn = turn;
+        recordPosition();
     }
 
     public Board getBoard() {
@@ -36,8 +42,14 @@ public class Chessgame {
         board.enPassantRow = -1;
         board.enPassantCol = -1;
 
-        Piece movingPiece = board.getPiece(move.startRow, move.startCol);
+        Piece moved = board.getPiece(move.startRow, move.startCol);
+        if (moved instanceof logic.pieces.Pawn || move.capturedPiece != null) {
+            halfMoveClock = 0;
+        } else {
+            halfMoveClock++;
+        }
 
+        Piece movingPiece = moved;
         board.setPiece(move.endRow, move.endCol, movingPiece);
         board.setPiece(move.startRow, move.startCol, null);
 
@@ -48,6 +60,7 @@ public class Chessgame {
             }
             board.setPiece(move.endRow, move.endCol, promotion);
             turn = (turn == Piece.Color.WHITE) ? Piece.Color.BLACK : Piece.Color.WHITE;
+            recordPosition();
             String notation = MoveNotation.toAlgebraic(this, move);
             history.add(notation);
             return true;
@@ -103,6 +116,7 @@ public class Chessgame {
         }
 
         turn = (turn == Piece.Color.WHITE) ? Piece.Color.BLACK : Piece.Color.WHITE;
+        recordPosition();
         String notation = MoveNotation.toAlgebraic(this, move);
         history.add(notation);
         return true;
@@ -165,6 +179,55 @@ public class Chessgame {
         return true;
     }
 
+    public boolean isFiftyMoveDraw() {
+        return halfMoveClock >= 100;
+    }
+
+    public boolean isThreefoldRepetition() {
+        for (int count : positionCounts.values()) {
+            if (count >= 3) return true;
+        }
+        return false;
+    }
+
+    public boolean isStalemate() {
+        if (isInCheck(turn)) return false;
+
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = board.getPiece(r, c);
+                if (p != null && p.getColor() == turn) {
+                    if (!getLegalMovesFiltered(r, c).isEmpty()) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public boolean isInsufficientMaterial() {
+        List<Piece> pieces = new ArrayList<>();
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = board.getPiece(r, c);
+                if (p != null) {
+                    pieces.add(p);
+                }
+            }
+        }
+
+        if (pieces.size() == 2) return true;
+
+        if (pieces.size() == 3) {
+            for (Piece p : pieces) {
+                if (p instanceof logic.pieces.Bishop || p instanceof logic.pieces.Knight) return true;
+            }
+        }
+
+        return false;
+    }
+
     public List<Move> getLegalMovesFiltered(int row, int col) {
         Piece p = board.getPiece(row, col);
         if (p == null || p.getColor() != turn) return new ArrayList<>();
@@ -188,7 +251,10 @@ public class Chessgame {
     public void reset() {
         board = new Board();
         turn = Piece.Color.WHITE;
+        halfMoveClock = 0;
+        positionCounts.clear();
         history.clear();
+        recordPosition();
     }
 
     public boolean isLegalMove(Move move) {
@@ -215,6 +281,11 @@ public class Chessgame {
     }
 
     private MoveHistory history = new MoveHistory();
+
+    private void recordPosition() {
+        String fen = board.toFEN(turn);
+        positionCounts.put(fen, positionCounts.getOrDefault(fen, 0) + 1);
+    }
 
     public MoveHistory getHistory() {
         return history;
