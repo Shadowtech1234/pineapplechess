@@ -3,9 +3,10 @@ package ui;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -14,12 +15,12 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 import logic.Chessgame;
 import logic.Move;
 import logic.pieces.Bishop;
@@ -28,14 +29,21 @@ import logic.pieces.Piece;
 import logic.pieces.Queen;
 import logic.pieces.Rook;
 
-public class Boardview extends GridPane {
+public class Boardview extends StackPane {
     private static final int TILE_SIZE = 80; //square size
+
+    private final GridPane boardGrid = new GridPane();
+    private final StackPane boardArea = new StackPane();
+    private final HBox boardContainer = new HBox(10);
+    private final StackPane overlay = new StackPane();
 
     private Chessgame game;
     private int selectedRow = -1;
     private int selectedCol = -1;
     private List<Move> legalMoves = new ArrayList<>();
     private ListView<String> moveList = new ListView<>();
+
+    public boolean flipped = false;
 
     public Boardview(Chessgame game) {
         this.game = game;
@@ -51,20 +59,39 @@ public class Boardview extends GridPane {
             cell.setStyle("-fx-padding: 8 12 8 12;");
             return cell;
         });
+
+        boardArea.getChildren().addAll(boardGrid, overlay);
+        boardArea.setAlignment(Pos.CENTER);
+
+        boardContainer.getChildren().addAll(boardArea, moveList);
+        boardContainer.setAlignment(Pos.CENTER_LEFT);
+
+        getChildren().add(boardContainer);
+        overlay.setVisible(false);
+        overlay.setPickOnBounds(true);
+        overlay.prefWidthProperty().bind(boardArea.widthProperty());
+        overlay.prefHeightProperty().bind(boardArea.heightProperty());
+        overlay.setAlignment(Pos.CENTER);
+
+        moveList.setPrefWidth(200);
+        moveList.setPrefHeight(TILE_SIZE * 8);
+
         updateMoveList();
         buildBoard();
     }
 
     private void buildBoard() {
-        getChildren().clear();
+        boardGrid.getChildren().clear();
 
-        for (int row = 0; row < 8; row++) {
-            for (int col = 0; col < 8; col++) {
+        for (int uiRow = 0; uiRow < 8; uiRow++) {
+            for (int uiCol = 0; uiCol < 8; uiCol++) {
+                int row = flipped ? 7 - uiRow : uiRow;
+                int col = flipped ? 7 - uiCol : uiCol;
+
                 StackPane square = new StackPane();
                 square.setPrefSize(TILE_SIZE, TILE_SIZE);
 
-                //colors
-                boolean light = (row + col) % 2 == 0;
+                boolean light = (uiRow + uiCol) % 2 == 0;
                 Color color = light ? Color.BEIGE : Color.BROWN;
 
                 Rectangle rect = new Rectangle(TILE_SIZE, TILE_SIZE);
@@ -89,7 +116,8 @@ public class Boardview extends GridPane {
                     String name = (piece.getColor() == Piece.Color.WHITE ? "white" : "black")
                             + type + ".png";
                     try {
-                        Image img = loadPieceImage(name);
+                        String preferredFolder = flipped ? "flipped" : "normal";
+                        Image img = loadPieceImage(name, preferredFolder);
                         ImageView iv = new ImageView(img);
                         iv.setFitWidth(TILE_SIZE * 0.8);
                         iv.setFitHeight(TILE_SIZE * 0.8);
@@ -99,11 +127,8 @@ public class Boardview extends GridPane {
                     }
                 }
 
-                int r = row;
-                int c = col;
-                square.setOnMouseClicked(e -> handleClick(r, c));
-
-                add(square, col, row);
+                square.setOnMouseClicked(e -> handleClick(row, col));
+                boardGrid.add(square, uiCol, uiRow);
             }
         }
     }
@@ -130,135 +155,141 @@ public class Boardview extends GridPane {
             }
 
             if (move.isPromotion) {
-                Piece promoted = showPromotionDialog(game.getTurn());
-                if (promoted == null) {
-                    promoted = new Queen(game.getTurn());
-                }
-                move = new Move(move.startRow, move.startCol, move.endRow, move.endCol,
-                        move.capturedPiece, move.isCastling, move.isEnPassant, promoted);
-                move.isPromotion = true;
+                Move promotionSource = move;
+                showPromotionPopup(game.getTurn(), selectedPromotion -> {
+                    Piece promotedPiece = selectedPromotion != null
+                            ? selectedPromotion
+                            : new Queen(game.getTurn());
+                    Move promotedMove = new Move(promotionSource.startRow, promotionSource.startCol,
+                            promotionSource.endRow, promotionSource.endCol,
+                            promotionSource.capturedPiece, promotionSource.isCastling,
+                            promotionSource.isEnPassant, promotedPiece);
+                    promotedMove.isPromotion = true;
+                    processMove(promotedMove);
+                });
+                return;
             }
 
-            if (game.makeMove(move)) {
-                System.out.println("Move made");
-                updateMoveList();
-                if (game.isFiftyMoveDraw()) {
-                    showDrawDialog("50-move rule");
-                } else if (game.isThreefoldRepetition()) {
-                    showDrawDialog("Threefold repetition");
-                } else if (game.isStalemate()) {
-                    showDrawDialog("Stalemate");
-                } else if (game.isInsufficientMaterial()) {
-                    showDrawDialog("Insufficient material");
-                } else if (game.isCheckmate(game.getTurn())) {
-                    showCheckmateDialog(
-                        game.getTurn() == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE
-                    );
-                }
-            } else {
-                System.out.println("Illegal move");
-            }
-
-            selectedRow = -1;
-            selectedCol = -1;
-            legalMoves.clear();
+            processMove(move);
         }
 
         refresh();
     }
 
-    private Piece showPromotionDialog(Piece.Color color) {
-        Stage dialog = new Stage();
-        dialog.setTitle("Choose Promotion");
-        dialog.initModality(Modality.APPLICATION_MODAL);
-
-        HBox box = new HBox(10);
-        box.setAlignment(Pos.CENTER);
-
-        Button queen = new Button("Queen");
-        Button rook = new Button("Rook");
-        Button bishop = new Button("Bishop");
-        Button knight = new Button("Knight");
-
-        final Piece[] choice = new Piece[1];
-
-        queen.setOnAction(e -> {
-            choice[0] = new Queen(color);
-            dialog.close();
-        });
-        rook.setOnAction(e -> {
-            choice[0] = new Rook(color);
-            dialog.close();
-        });
-        bishop.setOnAction(e -> {
-            choice[0] = new Bishop(color);
-            dialog.close();
-        });
-        knight.setOnAction(e -> {
-            choice[0] = new Knight(color);
-            dialog.close();
-        });
-
-        box.getChildren().addAll(queen, rook, bishop, knight);
-
-        Scene scene = new Scene(box, 300, 100);
-        dialog.setScene(scene);
-        dialog.showAndWait();
-
-        return choice[0];
+    public void applyFlip() {
+        // Flipping is handled by the board layout in buildBoard(), so no rotation is required here
     }
 
-    private void showCheckmateDialog(Piece.Color winner) {
-        Stage dialog = new Stage();
-        dialog.setTitle("Checkmate");
-        dialog.initModality(Modality.APPLICATION_MODAL);
+    private void processMove(Move move) {
+        if (game.makeMove(move)) {
+            System.out.println("Move made");
+            
+            if (game.shouldFlipBoard()) {
+                flipped = !flipped;
+            }
+            updateMoveList();
+            if (game.isFiftyMoveDraw()) {
+                showEndgamePopup("Draw: 50-move rule");
+            } 
+            else if (game.isThreefoldRepetition()) {
+                showEndgamePopup("Draw: Threefold repetition");
+            } 
+            else if (game.isStalemate()) {
+                showEndgamePopup("Draw: Stalemate");
+            } 
+            else if (game.isInsufficientMaterial()) {
+                showEndgamePopup("Draw: Insufficient material");
+            } 
+            else if (game.isCheckmate(game.getTurn())) {
+                Piece.Color winner = game.getTurn() == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE;
+                showEndgamePopup("Checkmate! " + winner + " wins!");
+            }
+        } else {
+            System.out.println("Illegal move"); //son why are you making illegal moves
+        }
 
-        VBox box = new VBox(10);
+        selectedRow = -1;
+        selectedCol = -1;
+        legalMoves.clear();
+        refresh();
+    }
+    
+    private void showPromotionPopup(Piece.Color color, Consumer<Piece> callback) {
+        HBox buttons = new HBox(10);
+        buttons.setAlignment(Pos.CENTER);
+
+        Button q = new Button("Queen");
+        Button r = new Button("Rook");
+        Button b = new Button("Bishop");
+        Button n = new Button("Knight");
+
+        q.setOnAction(e -> { callback.accept(new Queen(color)); hidePopup(); });
+        r.setOnAction(e -> { callback.accept(new Rook(color)); hidePopup(); });
+        b.setOnAction(e -> { callback.accept(new Bishop(color)); hidePopup(); });
+        n.setOnAction(e -> { callback.accept(new Knight(color)); hidePopup(); });
+
+        buttons.getChildren().addAll(q, r, b, n);
+        showPopup(buttons);
+    }
+
+
+
+
+
+    private void showPopup(Node content) {
+        overlay.getChildren().clear();
+
+        Rectangle dim = new Rectangle();
+        dim.widthProperty().bind(overlay.widthProperty());
+        dim.heightProperty().bind(overlay.heightProperty());
+        dim.setFill(Color.rgb(0, 0, 0, 0.5));
+
+        VBox box = new VBox(content);
+        box.setAlignment(Pos.CENTER);
+        box.setPrefWidth(300);
+        box.setPrefHeight(200);
+        box.setMaxWidth(300);
+        box.setMaxHeight(200);
+        box.setMinWidth(Region.USE_PREF_SIZE);
+        box.setMinHeight(Region.USE_PREF_SIZE);
+        box.setStyle("-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 10;");
+
+        StackPane.setAlignment(box, Pos.CENTER);
+
+        overlay.getChildren().addAll(dim, box);
+        overlay.setVisible(true);
+    }
+
+    private void hidePopup() {
+        overlay.setVisible(false);
+        overlay.getChildren().clear();
+    }
+
+    private void showEndgamePopup(String message) {
+        VBox box = new VBox(15);
         box.setAlignment(Pos.CENTER);
 
-        Label label = new Label("Checkmate! " + winner + " wins!");
-        Button reset = new Button("Reset Game");
+        Label label = new Label(message);
+        label.setStyle("-fx-font-size: 20; -fx-font-weight: bold;");
 
+        Button reset = new Button("Reset Game");
         reset.setOnAction(e -> {
             game.reset();
+            hidePopup();
             refresh();
-            dialog.close();
         });
 
         box.getChildren().addAll(label, reset);
-
-        Scene scene = new Scene(box, 300, 150);
-        dialog.setScene(scene);
-        dialog.show();
-    }
-
-    private void showDrawDialog(String reason) {
-        Stage dialog = new Stage();
-        dialog.setTitle("Draw");
-        dialog.initModality(Modality.APPLICATION_MODAL);
-
-        VBox box = new VBox(10);
-        box.setAlignment(Pos.CENTER);
-
-        Label label = new Label("Draw: " + reason);
-        Button reset = new Button("Reset Game");
-
-        reset.setOnAction(e -> {
-            game.reset();
-            refresh();
-            dialog.close();
-        });
-
-        box.getChildren().addAll(label, reset);
-
-        Scene scene = new Scene(box, 300, 150);
-        dialog.setScene(scene);
-        dialog.show();
+        showPopup(box);
     }
 
     public void refresh() {
         buildBoard();
         updateMoveList();
+    }
+
+    public void setBoardDisabled(boolean disabled) {
+        boardGrid.setDisable(disabled);
     }
 
     public ListView<String> getMoveList() {
@@ -279,18 +310,72 @@ public class Boardview extends GridPane {
         moveList.getItems().setAll(formatted);
     }
 
-    private Image loadPieceImage(String fileName) {
+    private Image loadPieceImage(String fileName, String preferredFolder) {
         Image img = null;
-        if (getClass().getResourceAsStream("/images/" + fileName) != null) {
-            img = new Image(getClass().getResourceAsStream("/images/" + fileName));
-        } else {
-            File file = new File("src/main/resources/images/" + fileName);
-            if (file.exists()) {
-                img = new Image(file.toURI().toString());
-            } else {
-                throw new IllegalStateException("Image resource not found: " + fileName);
+        List<String> resourcePaths = new ArrayList<>();
+        if (preferredFolder != null) {
+            resourcePaths.add("/images/" + preferredFolder + "/" + fileName);
+        }
+        if (!"normal".equals(preferredFolder)) {
+            resourcePaths.add("/images/normal/" + fileName);
+        }
+        resourcePaths.add("/images/" + fileName);
+
+        for (String path : resourcePaths) {
+            if (getClass().getResourceAsStream(path) != null) {
+                img = new Image(getClass().getResourceAsStream(path));
+                break;
             }
+        }
+
+        if (img == null) {
+            List<String> filePaths = new ArrayList<>();
+            if (preferredFolder != null) {
+                filePaths.add("src/main/resources/images/" + preferredFolder + "/" + fileName);
+            }
+            if (!"normal".equals(preferredFolder)) {
+                filePaths.add("src/main/resources/images/normal/" + fileName);
+            }
+            filePaths.add("src/main/resources/images/" + fileName);
+
+            for (String path : filePaths) {
+                File file = new File(path);
+                if (file.exists()) {
+                    img = new Image(file.toURI().toString());
+                    break;
+                }
+            }
+        }
+
+        if (img == null) {
+            throw new IllegalStateException("Image resource not found: " + fileName);
         }
         return img;
     }
+
+
+    public void showModeSelectPopup(Runnable onStart) {
+        VBox box = new VBox(15);
+        box.setAlignment(Pos.CENTER);
+
+        Label title = new Label("Choose Game Mode");
+        title.setStyle("-fx-font-size: 20; -fx-font-weight: bold;");
+
+        Button twoPlayer = new Button("2 Player Mode");
+
+        twoPlayer.setOnAction(e -> {
+        //game.setFlipBoard(true); // gotta add the flip board latter, this isnt added add it later THEN UN COMMENT IT 
+        hidePopup();
+        onStart.run();
+        });
+
+        box.getChildren().addAll(title, twoPlayer);
+
+        showPopup(box);
+    
+
+    }
+
+
+
 }

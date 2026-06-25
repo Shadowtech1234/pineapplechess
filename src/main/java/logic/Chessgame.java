@@ -35,10 +35,21 @@ public class Chessgame {
         return turn;
     }
 
+    public boolean flipBoard = false;
+
+    public void setFlipBoard(boolean flip) {
+        this.flipBoard = flip;
+    }
+
+    public boolean shouldFlipBoard() {
+        return flipBoard;
+    }
+
+    
     public boolean makeMove(Move move) {
         if (!isLegalMove(move)) return false;
 
-        // Reset en passant target before applying a new move.
+        // Reset en passant target before applying a new move
         board.enPassantRow = -1;
         board.enPassantCol = -1;
 

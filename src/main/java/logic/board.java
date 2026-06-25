@@ -1,6 +1,6 @@
 package logic;
 
-import logic.Move;
+//import logic.Move;
 import logic.pieces.Bishop;
 import logic.pieces.King;
 import logic.pieces.Knight;
