@@ -303,5 +303,20 @@ public class Chessgame {
     }
 
 
+    //theme light and dark not pineapple and not pineapple
+    public enum Theme {
+        LIGHT, DARK
+    }
+    private Theme theme = Theme.LIGHT;
+
+    public Theme getTheme() {
+        return theme;
+    }
+
+    public void setTheme(Theme t) {
+        theme = t;
+    }
+
+
 }
 

@@ -8,9 +8,12 @@ import java.util.function.Consumer;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ScrollBar;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.application.Platform;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
@@ -34,10 +37,11 @@ public class Boardview extends StackPane {
 
     private final GridPane boardGrid = new GridPane();
     private final StackPane boardArea = new StackPane();
-    private final HBox boardContainer = new HBox(10);
+    private final HBox boardContainer = new HBox(0);
     private final StackPane overlay = new StackPane();
 
     private Chessgame game;
+    private SidebarView sidebar;
     private int selectedRow = -1;
     private int selectedCol = -1;
     private List<Move> legalMoves = new ArrayList<>();
@@ -46,17 +50,28 @@ public class Boardview extends StackPane {
     public boolean flipped = false;
 
     public Boardview(Chessgame game) {
+        this(game, null);
+    }
+
+    public Boardview(Chessgame game, SidebarView sidebar) {
         this.game = game;
-        moveList.setStyle("-fx-font-size: 16px;");
+        this.sidebar = sidebar;
+        applyThemeToMoveList();
         moveList.setCellFactory(lv -> {
             ListCell<String> cell = new ListCell<>() {
                 @Override
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
-                    setText(empty ? null : item);
+                    if (empty) {
+                        setText(null);
+                    } else {
+                        setText(item);
+                        setStyle(getMoveListCellStyle());
+                    }
                 }
             };
-            cell.setStyle("-fx-padding: 8 12 8 12;");
+            cell.setWrapText(true);
+            cell.prefWidthProperty().bind(moveList.widthProperty().subtract(24));
             return cell;
         });
 
@@ -74,7 +89,38 @@ public class Boardview extends StackPane {
         overlay.setAlignment(Pos.CENTER);
 
         moveList.setPrefWidth(200);
-        moveList.setPrefHeight(TILE_SIZE * 8);
+        // make move list height follow the board area so it expands/contracts with the window
+        moveList.prefHeightProperty().bind(boardArea.heightProperty());
+
+        // When moves update or the list grows, keep the view anchored to the top
+        moveList.heightProperty().addListener((obs, oldV, newV) -> {
+            if (newV.doubleValue() > oldV.doubleValue()) {
+                moveList.scrollTo(0);
+            }
+        });
+
+        // Ensure scrollbar track/thumb match theme and don't show a white track gap
+        moveList.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                Platform.runLater(() -> {
+                    Node node = moveList.lookup(".scroll-bar:vertical");
+                    if (node instanceof ScrollBar sb) {
+                        sb.setStyle("-fx-background-color: transparent; -fx-padding: 0; -fx-background-insets: 0; -fx-pref-width: 8;");
+                        Node track = sb.lookup(".track");
+                        Node thumb = sb.lookup(".thumb");
+                        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
+                        if (track != null) {
+                            track.setStyle("-fx-background-color: transparent;");
+                        }
+                        if (thumb != null) {
+                            thumb.setStyle(darkTheme
+                                    ? "-fx-background-color: #555; -fx-background-insets: 2; -fx-background-radius: 4;"
+                                    : "-fx-background-color: derive(#e5e5e5, -10%); -fx-background-insets: 2; -fx-background-radius: 4;");
+                        }
+                    }
+                });
+            }
+        });
 
         updateMoveList();
         buildBoard();
@@ -91,8 +137,27 @@ public class Boardview extends StackPane {
                 StackPane square = new StackPane();
                 square.setPrefSize(TILE_SIZE, TILE_SIZE);
 
+                /* old theme, only one color so now it shoudl switch colors
                 boolean light = (uiRow + uiCol) % 2 == 0;
                 Color color = light ? Color.BEIGE : Color.BROWN;
+                */
+
+                boolean lightSquare = (uiRow + uiCol) % 2 == 0;
+                Color lightColor;
+                Color darkColor;
+
+                if (game.getTheme() == Chessgame.Theme.LIGHT) {
+                    lightColor = Color.BEIGE;
+                    darkColor = Color.BROWN;
+                } 
+                else {
+                    lightColor = Color.rgb(70, 70, 70);
+                    darkColor = Color.rgb(40, 40, 40);
+                }
+
+                Color color = lightSquare ? lightColor : darkColor; 
+
+
 
                 Rectangle rect = new Rectangle(TILE_SIZE, TILE_SIZE);
                 rect.setFill(color);
@@ -252,7 +317,10 @@ public class Boardview extends StackPane {
         box.setMaxHeight(200);
         box.setMinWidth(Region.USE_PREF_SIZE);
         box.setMinHeight(Region.USE_PREF_SIZE);
-        box.setStyle("-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 10;");
+        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
+        box.setStyle(darkTheme
+                ? "-fx-background-color: #2a2a2a; -fx-padding: 20; -fx-background-radius: 10; -fx-text-fill: white;"
+                : "-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 10; -fx-text-fill: #222;");
 
         StackPane.setAlignment(box, Pos.CENTER);
 
@@ -286,6 +354,14 @@ public class Boardview extends StackPane {
     public void refresh() {
         buildBoard();
         updateMoveList();
+        applyThemeToMoveList();
+        if (sidebar != null) {
+            sidebar.refreshTheme();
+        }
+    }
+
+    public void setSidebar(SidebarView sidebar) {
+        this.sidebar = sidebar;
     }
 
     public void setBoardDisabled(boolean disabled) {
@@ -308,6 +384,23 @@ public class Boardview extends StackPane {
             formatted.add(line);
         }
         moveList.getItems().setAll(formatted);
+        // ensure view anchors to top when list changes so earliest items are visible first
+        if (!formatted.isEmpty()) moveList.scrollTo(0);
+    }
+
+    private void applyThemeToMoveList() {
+        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
+        String bg = darkTheme ? "#2b2b2b" : "#f5f5f5";
+        String text = darkTheme ? "white" : "#222222";
+        // match sidebar look and add a left border to separate from the board
+        moveList.setStyle("-fx-font-size: 16px; -fx-background-color: " + bg + "; -fx-control-inner-background: " + bg + "; -fx-text-fill: " + text + "; -fx-border-color: black; -fx-border-width: 0 0 0 1;");
+    }
+
+    private String getMoveListCellStyle() {
+        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
+        String bg = darkTheme ? "#2b2b2b" : "#f5f5f5";
+        String text = darkTheme ? "white" : "#222222";
+        return "-fx-padding: 8 12 8 12; -fx-background-color: " + bg + "; -fx-text-fill: " + text + ";";
     }
 
     private Image loadPieceImage(String fileName, String preferredFolder) {
@@ -373,6 +466,63 @@ public class Boardview extends StackPane {
 
         showPopup(box);
     
+
+    }
+
+    public void showSettingsPopup() {
+
+        VBox box = new VBox(15);
+        box.setAlignment(Pos.CENTER);
+        Label title = new Label("Settings");
+        title.setStyle("-fx-font-size: 22; -fx-font-weight: bold;");
+
+        CheckBox flipToggle = new CheckBox("Flip board in 2-player mode");
+        flipToggle.setSelected(game.shouldFlipBoard());
+        flipToggle.setOnAction(e -> {
+            boolean enabled = flipToggle.isSelected();
+            game.setFlipBoard(enabled);
+            if (enabled) {
+                // when enabling flip mode, show the current player's side at bottom
+                this.flipped = (game.getTurn() == logic.pieces.Piece.Color.BLACK);
+            } else {
+                // when disabling, always show white at bottom
+                this.flipped = false;
+            }
+        });
+
+        CheckBox darkMode = new CheckBox("Dark Mode");
+        darkMode.setSelected(game.getTheme() == Chessgame.Theme.DARK);
+        darkMode.setOnAction(e -> {
+            game.setTheme(darkMode.isSelected() ? Chessgame.Theme.DARK : Chessgame.Theme.LIGHT);
+            refresh();
+            if (sidebar != null) {
+                sidebar.refreshTheme();
+            }
+        });
+
+        Button close = new Button("Close");
+        close.setOnAction(e -> {
+            hidePopup();
+            refresh();
+            if (sidebar != null) sidebar.refreshTheme();
+        });
+
+        // apply per control text color so dark mode popup text is readable
+        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
+        if (darkTheme) {
+            title.setStyle("-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: white;");
+            flipToggle.setStyle("-fx-text-fill: white;");
+            darkMode.setStyle("-fx-text-fill: white;");
+            close.setStyle("-fx-background-color: #444; -fx-text-fill: white;");
+        } else {
+            title.setStyle("-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: #222;");
+            flipToggle.setStyle("-fx-text-fill: #222;");
+            darkMode.setStyle("-fx-text-fill: #222;");
+            close.setStyle("");
+        }
+
+        box.getChildren().addAll(title, flipToggle, darkMode, close);
+        showPopup(box);
 
     }
 

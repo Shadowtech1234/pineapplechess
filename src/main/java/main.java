@@ -22,7 +22,9 @@ public class main extends Application {
         root.setCenter(board);
 
         SidebarView sidebar = new SidebarView(board, game);
+        board.setSidebar(sidebar);
         root.setLeft(sidebar);
+        root.setStyle("-fx-border-color: black; -fx-border-width: 0 1 0 0;");
 
         Scene scene = new Scene(root, 900, 640);
         stage.setScene(scene);

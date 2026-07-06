@@ -2,19 +2,23 @@ package ui;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
 import logic.Chessgame;
-
+import logic.pieces.Piece;
 
 public class SidebarView extends VBox {
-    
+    private final Boardview board;
+    private final Chessgame game;
+
     public SidebarView(Boardview board, Chessgame game) {
+        this.board = board;
+        this.game = game;
 
         setSpacing(15);
         setPadding(new Insets(20));
         setAlignment(Pos.TOP_CENTER);
-        setStyle("-fx-background-color: #333;");;
 
         Button play = new Button("Play");
         Button importBtn = new Button("Import");
@@ -26,20 +30,41 @@ public class SidebarView extends VBox {
         exportBtn.setMaxWidth(Double.MAX_VALUE);
         settings.setMaxWidth(Double.MAX_VALUE);
 
-        // the board disables until you choose a mode, but keep the overlay active, modes in the future will be stockfish or another bot but for now its only 2 player mode
         board.setBoardDisabled(true);
 
         play.setOnAction(e -> {
             board.showModeSelectPopup(() -> {
                 game.reset();
                 game.setFlipBoard(true);
-                board.flipped = false;
+                // set board orientation to current player's side
+                board.flipped = (game.getTurn() == Piece.Color.BLACK);
                 board.setBoardDisabled(false);
                 board.refresh();
             });
         });
 
         getChildren().addAll(play, importBtn, exportBtn, settings);
-        
+        applyThemeStyle();
+
+        settings.setOnAction(e -> board.showSettingsPopup());
+    }
+
+    public void refreshTheme() {
+        applyThemeStyle();
+    }
+
+    private void applyThemeStyle() {
+        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
+        setStyle(darkTheme
+            ? "-fx-background-color: #222; -fx-text-fill: white; -fx-border-color: black; -fx-border-width: 0 1 0 0;"
+            : "-fx-background-color: #ddd; -fx-text-fill: #222; -fx-border-color: black; -fx-border-width: 0 1 0 0;");
+
+        for (Node node : getChildren()) {
+            if (node instanceof Button button) {
+                button.setStyle(darkTheme
+                        ? "-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: transparent;"
+                        : "-fx-background-color: #e5e5e5; -fx-text-fill: #222; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: black; -fx-border-width: 1; -fx-border-radius: 6;");
+            }
+        }
     }
 }
