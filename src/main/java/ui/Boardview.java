@@ -5,6 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -18,6 +23,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
@@ -33,8 +39,10 @@ import logic.pieces.Queen;
 import logic.pieces.Rook;
 
 public class Boardview extends StackPane {
-    private static final int TILE_SIZE = 80; //square size
+    private static final int BOARD_TILES = 8;
+    private static final int DEFAULT_TILE_SIZE = 80;
 
+    private final DoubleProperty tileSize = new SimpleDoubleProperty(DEFAULT_TILE_SIZE);
     private final GridPane boardGrid = new GridPane();
     private final StackPane boardArea = new StackPane();
     private final HBox boardContainer = new HBox(0);
@@ -77,9 +85,12 @@ public class Boardview extends StackPane {
 
         boardArea.getChildren().addAll(boardGrid, overlay);
         boardArea.setAlignment(Pos.CENTER);
+        boardArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        boardArea.setMinSize(0, 0);
 
         boardContainer.getChildren().addAll(boardArea, moveList);
         boardContainer.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(boardArea, Priority.ALWAYS);
 
         getChildren().add(boardContainer);
         overlay.setVisible(false);
@@ -88,9 +99,17 @@ public class Boardview extends StackPane {
         overlay.prefHeightProperty().bind(boardArea.heightProperty());
         overlay.setAlignment(Pos.CENTER);
 
-        moveList.setPrefWidth(200);
+        moveList.setMinWidth(120);
+        moveList.setMaxWidth(280);
+        moveList.prefWidthProperty().bind(Bindings.createDoubleBinding(() ->
+                Math.max(120, Math.min(280, boardContainer.getWidth() * 0.24)),
+                boardContainer.widthProperty()));
         // make move list height follow the board area so it expands/contracts with the window
         moveList.prefHeightProperty().bind(boardArea.heightProperty());
+
+        boardArea.widthProperty().addListener((obs, oldWidth, newWidth) -> updateTileSize());
+        boardArea.heightProperty().addListener((obs, oldHeight, newHeight) -> updateTileSize());
+        updateTileSize();
 
         // When moves update or the list grows, keep the view anchored to the top
         moveList.heightProperty().addListener((obs, oldV, newV) -> {
@@ -126,6 +145,24 @@ public class Boardview extends StackPane {
         buildBoard();
     }
 
+    private void updateTileSize() {
+        double maxWidth = boardArea.getWidth();
+        double maxHeight = boardArea.getHeight();
+        if (maxWidth <= 0 || maxHeight <= 0) {
+            tileSize.set(DEFAULT_TILE_SIZE);
+            return;
+        }
+
+        double size = Math.min(maxWidth, maxHeight);
+        double newTileSize = Math.max(40, size / BOARD_TILES);
+        tileSize.set(newTileSize);
+
+        boardGrid.setPrefWidth(newTileSize * BOARD_TILES);
+        boardGrid.setPrefHeight(newTileSize * BOARD_TILES);
+        boardGrid.setMinWidth(0);
+        boardGrid.setMinHeight(0);
+    }
+
     private void buildBoard() {
         boardGrid.getChildren().clear();
 
@@ -135,7 +172,12 @@ public class Boardview extends StackPane {
                 int col = flipped ? 7 - uiCol : uiCol;
 
                 StackPane square = new StackPane();
-                square.setPrefSize(TILE_SIZE, TILE_SIZE);
+                square.prefWidthProperty().bind(tileSize);
+                square.prefHeightProperty().bind(tileSize);
+                square.minWidthProperty().bind(tileSize);
+                square.minHeightProperty().bind(tileSize);
+                square.maxWidthProperty().bind(tileSize);
+                square.maxHeightProperty().bind(tileSize);
 
                 /* old theme, only one color so now it shoudl switch colors
                 boolean light = (uiRow + uiCol) % 2 == 0;
@@ -159,13 +201,17 @@ public class Boardview extends StackPane {
 
 
 
-                Rectangle rect = new Rectangle(TILE_SIZE, TILE_SIZE);
+                Rectangle rect = new Rectangle();
+                rect.widthProperty().bind(tileSize);
+                rect.heightProperty().bind(tileSize);
                 rect.setFill(color);
                 square.getChildren().add(rect);
 
                 for (Move m : legalMoves) {
                     if (m.endRow == row && m.endCol == col) {
-                        Rectangle highlight = new Rectangle(TILE_SIZE, TILE_SIZE);
+                        Rectangle highlight = new Rectangle();
+                        highlight.widthProperty().bind(tileSize);
+                        highlight.heightProperty().bind(tileSize);
                         highlight.setFill(Color.rgb(0, 255, 0, 0.3));
                         square.getChildren().add(highlight);
                         break;
@@ -184,8 +230,9 @@ public class Boardview extends StackPane {
                         String preferredFolder = flipped ? "flipped" : "normal";
                         Image img = loadPieceImage(name, preferredFolder);
                         ImageView iv = new ImageView(img);
-                        iv.setFitWidth(TILE_SIZE * 0.8);
-                        iv.setFitHeight(TILE_SIZE * 0.8);
+                        iv.fitWidthProperty().bind(tileSize.multiply(0.8));
+                        iv.fitHeightProperty().bind(tileSize.multiply(0.8));
+                        iv.setPreserveRatio(true);
                         square.getChildren().add(iv);
                     } catch (Exception ex) {
                         System.err.println("Could not load image for " + name + ": " + ex.getMessage());
