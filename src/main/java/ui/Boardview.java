@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.binding.Bindings;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.geometry.Pos;
@@ -54,6 +55,7 @@ public class Boardview extends StackPane {
     private int selectedCol = -1;
     private List<Move> legalMoves = new ArrayList<>();
     private ListView<String> moveList = new ListView<>();
+    private final DoubleProperty moveFontSize = new SimpleDoubleProperty(16);
 
     public boolean flipped = false;
 
@@ -103,6 +105,9 @@ public class Boardview extends StackPane {
         moveList.setMaxWidth(280);
         moveList.prefWidthProperty().bind(Bindings.createDoubleBinding(() ->
                 Math.max(120, Math.min(280, boardContainer.getWidth() * 0.24)),
+                boardContainer.widthProperty()));
+        moveFontSize.bind(Bindings.createDoubleBinding(() ->
+                Math.max(12, Math.min(22, boardContainer.getWidth() / 50)),
                 boardContainer.widthProperty()));
         // make move list height follow the board area so it expands/contracts with the window
         moveList.prefHeightProperty().bind(boardArea.heightProperty());
@@ -447,7 +452,7 @@ public class Boardview extends StackPane {
         boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
         String bg = darkTheme ? "#2b2b2b" : "#f5f5f5";
         String text = darkTheme ? "white" : "#222222";
-        return "-fx-padding: 8 12 8 12; -fx-background-color: " + bg + "; -fx-text-fill: " + text + ";";
+        return "-fx-padding: 8 12 8 12; -fx-background-color: " + bg + "; -fx-text-fill: " + text + "; -fx-font-size: " + moveFontSize.get() + "px;";
     }
 
     private Image loadPieceImage(String fileName, String preferredFolder) {
