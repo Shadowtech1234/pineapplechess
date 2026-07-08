@@ -67,6 +67,7 @@ public class Boardview extends StackPane {
         this.game = game;
         this.sidebar = sidebar;
         applyThemeToMoveList();
+        applyThemeToBackgrounds();
         moveList.setCellFactory(lv -> {
             ListCell<String> cell = new ListCell<>() {
                 @Override
@@ -407,6 +408,7 @@ public class Boardview extends StackPane {
         buildBoard();
         updateMoveList();
         applyThemeToMoveList();
+        applyThemeToBackgrounds();
         if (sidebar != null) {
             sidebar.refreshTheme();
         }
@@ -446,6 +448,16 @@ public class Boardview extends StackPane {
         String text = darkTheme ? "white" : "#222222";
         // match sidebar look and add a left border to separate from the board
         moveList.setStyle("-fx-font-size: 16px; -fx-background-color: " + bg + "; -fx-control-inner-background: " + bg + "; -fx-text-fill: " + text + "; -fx-border-color: black; -fx-border-width: 0 0 0 1;");
+    }
+
+    private void applyThemeToBackgrounds() {
+        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
+        String bg = darkTheme ? "#1a1a1a" : "#ffffff";
+        
+        // Apply background to main containers to fill any spacers
+        this.setStyle("-fx-background-color: " + bg + ";");
+        boardContainer.setStyle("-fx-background-color: " + bg + ";");
+        boardArea.setStyle("-fx-background-color: " + bg + ";");
     }
 
     private String getMoveListCellStyle() {
