@@ -29,6 +29,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import logic.Chessgame;
@@ -48,6 +49,11 @@ public class Boardview extends StackPane {
     private final StackPane boardArea = new StackPane();
     private final HBox boardContainer = new HBox(0);
     private final StackPane overlay = new StackPane();
+    private final Region leftSpacer = new Region();
+    private final Region rightSpacer = new Region();
+    private final Region topSpacer = new Region();
+    private final Region bottomSpacer = new Region();
+    private final VBox mainContainer = new VBox(0);
 
     private Chessgame game;
     private SidebarView sidebar;
@@ -91,11 +97,20 @@ public class Boardview extends StackPane {
         boardArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         boardArea.setMinSize(0, 0);
 
-        boardContainer.getChildren().addAll(boardArea, moveList);
-        boardContainer.setAlignment(Pos.CENTER_LEFT);
+        boardContainer.getChildren().addAll(leftSpacer, boardArea, moveList, rightSpacer);
+        boardContainer.setAlignment(Pos.CENTER);
+        HBox.setHgrow(leftSpacer, Priority.ALWAYS);
+        HBox.setHgrow(rightSpacer, Priority.ALWAYS);
         HBox.setHgrow(boardArea, Priority.ALWAYS);
+        HBox.setHgrow(moveList, Priority.NEVER);
 
-        getChildren().add(boardContainer);
+        mainContainer.getChildren().addAll(topSpacer, boardContainer, bottomSpacer);
+        mainContainer.setAlignment(Pos.CENTER);
+        VBox.setVgrow(topSpacer, Priority.ALWAYS);
+        VBox.setVgrow(bottomSpacer, Priority.ALWAYS);
+        VBox.setVgrow(boardContainer, Priority.ALWAYS);
+
+        getChildren().add(mainContainer);
         overlay.setVisible(false);
         overlay.setPickOnBounds(true);
         overlay.prefWidthProperty().bind(boardArea.widthProperty());
@@ -116,6 +131,27 @@ public class Boardview extends StackPane {
         boardArea.widthProperty().addListener((obs, oldWidth, newWidth) -> updateTileSize());
         boardArea.heightProperty().addListener((obs, oldHeight, newHeight) -> updateTileSize());
         updateTileSize();
+
+        // Update spacer visibility based on layout orientation
+        this.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                Platform.runLater(() -> {
+                    if (newScene.getWindow() != null) {
+                        // Recompute spacer sizes on window resize
+                        newScene.getWindow().widthProperty().addListener((o, oldV, newV) -> updateSpacerVisibility());
+                        newScene.getWindow().heightProperty().addListener((o, oldV, newV) -> updateSpacerVisibility());
+                        updateSpacerVisibility();
+                    }
+                });
+            }
+        });
+        mainContainer.layoutBoundsProperty().addListener((obs, oldBounds, newBounds) -> updateSpacerVisibility());
+
+        // Ensure clicks anywhere in the main container (including sidebar) re-evaluate spacers
+        mainContainer.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
+            System.out.println("mainContainer mouse pressed -> updating spacer visibility");
+            Platform.runLater(() -> updateSpacerVisibility());
+        });
 
         // When moves update or the list grows, keep the view anchored to the top
         moveList.heightProperty().addListener((obs, oldV, newV) -> {
@@ -167,6 +203,80 @@ public class Boardview extends StackPane {
         boardGrid.setPrefHeight(newTileSize * BOARD_TILES);
         boardGrid.setMinWidth(0);
         boardGrid.setMinHeight(0);
+    }
+
+    private void updateSpacerVisibility() {
+        double winW = (getScene() != null && getScene().getWindow() != null) ? getScene().getWindow().getWidth() : mainContainer.getWidth();
+        double winH = (getScene() != null && getScene().getWindow() != null) ? getScene().getWindow().getHeight() : mainContainer.getHeight();
+
+        double moveW = (moveList.isManaged() ? moveList.getWidth() : moveList.getPrefWidth());
+        if (Double.isNaN(moveW) || moveW <= 0) moveW = moveList.getMinWidth();
+
+        // Use the boardContainer dimensions so the board fills the visible content area
+        double containerW = boardContainer.getWidth();
+        double containerH = boardContainer.getHeight();
+        if (Double.isNaN(containerW) || containerW <= 0) containerW = winW;
+        if (Double.isNaN(containerH) || containerH <= 0) containerH = winH;
+
+        double availWidthForBoard = Math.max(0, containerW - moveW);
+        double availHeightForBoard = Math.max(0, containerH);
+
+        // desired board size is the largest square that fits available width (excluding move list) and height
+        double desiredBoardSize = Math.min(availWidthForBoard, availHeightForBoard);
+
+        // set board grid to desired size so tileSize computation can use it
+        boardGrid.setPrefWidth(desiredBoardSize);
+        boardGrid.setPrefHeight(desiredBoardSize);
+
+        // remaining space horizontally (split into left/right spacers)
+        double remainingH = Math.max(0, availWidthForBoard - desiredBoardSize);
+        double sideSpacer = remainingH / 2.0;
+
+        // remaining space vertically (split into top/bottom spacers)
+        double remainingV = Math.max(0, availHeightForBoard - desiredBoardSize);
+        double topBottomSpacer = remainingV / 2.0;
+
+        boolean isHorizontal = winW > winH;
+
+        if (isHorizontal) {
+            // horizontal layout: left/right spacers active
+            topSpacer.setManaged(false);
+            topSpacer.setVisible(false);
+            topSpacer.setPrefHeight(0);
+
+            bottomSpacer.setManaged(false);
+            bottomSpacer.setVisible(false);
+            bottomSpacer.setPrefHeight(0);
+
+            leftSpacer.setManaged(true);
+            leftSpacer.setVisible(true);
+            leftSpacer.setPrefWidth(sideSpacer);
+
+            rightSpacer.setManaged(true);
+            rightSpacer.setVisible(true);
+            rightSpacer.setPrefWidth(sideSpacer);
+        } else {
+            // vertical layout: top/bottom spacers active
+            leftSpacer.setManaged(false);
+            leftSpacer.setVisible(false);
+            leftSpacer.setPrefWidth(0);
+
+            rightSpacer.setManaged(false);
+            rightSpacer.setVisible(false);
+            rightSpacer.setPrefWidth(0);
+
+            topSpacer.setManaged(true);
+            topSpacer.setVisible(true);
+            topSpacer.setPrefHeight(topBottomSpacer);
+
+            bottomSpacer.setManaged(true);
+            bottomSpacer.setVisible(true);
+            bottomSpacer.setPrefHeight(topBottomSpacer);
+        }
+
+        // trigger tile size recalculation and layout pass
+        updateTileSize();
+        Platform.runLater(() -> mainContainer.layout());
     }
 
     private void buildBoard() {
@@ -412,6 +522,17 @@ public class Boardview extends StackPane {
         if (sidebar != null) {
             sidebar.refreshTheme();
         }
+        // Ensure spacers/centering update after any UI change (clicks, theme toggles, etc.)
+        System.out.println("refresh() called - updating spacer visibility");
+        updateSpacerVisibility();
+        System.out.println("spacers after update: top(managed=" + topSpacer.isManaged() + ",visible=" + topSpacer.isVisible() + ",prefH=" + topSpacer.getPrefHeight() + ") " +
+                "bottom(managed=" + bottomSpacer.isManaged() + ",visible=" + bottomSpacer.isVisible() + ",prefH=" + bottomSpacer.getPrefHeight() + ") " +
+                "left(managed=" + leftSpacer.isManaged() + ",visible=" + leftSpacer.isVisible() + ",prefW=" + leftSpacer.getPrefWidth() + ") " +
+                "right(managed=" + rightSpacer.isManaged() + ",visible=" + rightSpacer.isVisible() + ",prefW=" + rightSpacer.getPrefWidth() + ")");
+        Platform.runLater(() -> {
+            mainContainer.layout();
+            System.out.println("layout runLater executed");
+        });
     }
 
     public void setSidebar(SidebarView sidebar) {
@@ -454,10 +575,15 @@ public class Boardview extends StackPane {
         boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
         String bg = darkTheme ? "#1a1a1a" : "#ffffff";
         
-        // Apply background to main containers to fill any spacers
+        // Apply background to all containers and spacers
         this.setStyle("-fx-background-color: " + bg + ";");
+        mainContainer.setStyle("-fx-background-color: " + bg + ";");
         boardContainer.setStyle("-fx-background-color: " + bg + ";");
         boardArea.setStyle("-fx-background-color: " + bg + ";");
+        leftSpacer.setStyle("-fx-background-color: " + bg + ";");
+        rightSpacer.setStyle("-fx-background-color: " + bg + ";");
+        topSpacer.setStyle("-fx-background-color: " + bg + ";");
+        bottomSpacer.setStyle("-fx-background-color: " + bg + ";");
     }
 
     private String getMoveListCellStyle() {
