@@ -33,14 +33,19 @@ public class SidebarView extends VBox {
         board.setBoardDisabled(true);
 
         play.setOnAction(e -> {
-            board.showModeSelectPopup(() -> {
-                game.reset();
-                game.setFlipBoard(true);
-                // set board orientation to current player's side
-                board.flipped = (game.getTurn() == Piece.Color.BLACK);
-                board.setBoardDisabled(false);
-                board.refresh();
-            });
+            board.showModeSelectPopup(
+                () -> { //two player
+                    game.reset();
+                    board.setBoardDisabled(false);
+                    board.refresh();
+                },
+
+                () -> { //vs stockfish
+                    game.reset();
+                    board.setBoardDisabled(false);
+                    board.refresh();
+                }
+            );
         });
 
         getChildren().addAll(play, importBtn, exportBtn, settings);

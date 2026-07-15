@@ -1,10 +1,12 @@
 package logic;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import engine.StockfishEngine;
 import logic.pieces.King;
 import logic.pieces.Piece;
 import logic.pieces.Rook;
@@ -315,6 +317,37 @@ public class Chessgame {
 
     public void setTheme(Theme t) {
         theme = t;
+    }
+
+
+    //stockfish
+    private boolean vsStockfish = false;
+    public StockfishEngine engine;
+
+    public boolean isVsStockfish() {
+        return vsStockfish;
+    }
+
+    public void enableStockfish(String pathToExe) {
+        vsStockfish = true;
+        try {
+            engine = new StockfishEngine(pathToExe);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void disableStockfish() {
+        vsStockfish = false;
+        try {
+            if (engine != null) engine.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public String getFen() {
+        return board.toFEN(turn);
     }
 
 

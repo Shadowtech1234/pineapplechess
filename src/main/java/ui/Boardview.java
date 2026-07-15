@@ -1,24 +1,22 @@
 package ui;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import javafx.beans.property.DoubleProperty;
-import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.binding.Bindings;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.control.ScrollBar;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollBar;
 import javafx.application.Platform;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -185,6 +183,44 @@ public class Boardview extends StackPane {
 
         updateMoveList();
         buildBoard();
+    }
+
+
+    private Move parseUciMove(String uci) {
+        int sc = uci.charAt(0) - 'a';
+        int sr = 8 - (uci.charAt(1) - '0');
+        int ec = uci.charAt(2) - 'a';
+        int er = 8 - (uci.charAt(3) - '0');
+
+        Piece captured = game.getBoard().getPiece(er, ec);
+        Move m = new Move(sr, sc, er, ec, captured);
+
+        if (uci.length() == 5) {
+            m.isPromotion = true;
+            //force queen or promotion logic
+        }
+
+        return m;
+    }
+
+    private void requestStockfishMove() {
+        new Thread(() -> {
+            try {
+                String fen = game.getFen();
+                String best = game.engine.getBestMove(fen, 15); //depth is 15
+
+                if (best == null) return;
+
+                Move m = parseUciMove(best);
+                Platform.runLater(() -> {
+                    if (game.makeMove(m)) {
+                        refresh();
+                    }
+                });
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     private void updateTileSize() {
@@ -402,6 +438,7 @@ public class Boardview extends StackPane {
         }
 
         refresh();
+
     }
 
     public void applyFlip() {
@@ -431,6 +468,11 @@ public class Boardview extends StackPane {
             else if (game.isCheckmate(game.getTurn())) {
                 Piece.Color winner = game.getTurn() == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE;
                 showEndgamePopup("Checkmate! " + winner + " wins!");
+            }
+            
+            // Only ask Stockfish to move after a successful human move
+            if (game.isVsStockfish()) {
+                requestStockfishMove();
             }
         } else {
             System.out.println("Illegal move"); //son why are you making illegal moves
@@ -637,7 +679,7 @@ public class Boardview extends StackPane {
     }
 
 
-    public void showModeSelectPopup(Runnable onStart) {
+    public void showModeSelectPopup(Runnable onStartTwoPlayer, Runnable onStartStockfish) {
         VBox box = new VBox(15);
         box.setAlignment(Pos.CENTER);
 
@@ -645,14 +687,24 @@ public class Boardview extends StackPane {
         title.setStyle("-fx-font-size: 20; -fx-font-weight: bold;");
 
         Button twoPlayer = new Button("2 Player Mode");
+        Button vsStockfish = new Button("Play vs Stockfish");
 
         twoPlayer.setOnAction(e -> {
         //game.setFlipBoard(true); // gotta add the flip board latter, this isnt added add it later THEN UN COMMENT IT 
+        game.disableStockfish();
+        game.setFlipBoard(true);
         hidePopup();
-        onStart.run();
+        onStartTwoPlayer.run();
         });
 
-        box.getChildren().addAll(title, twoPlayer);
+        vsStockfish.setOnAction(e -> {
+        game.setFlipBoard(false);
+        game.enableStockfish("engine/stockfish.exe");
+        hidePopup();
+        onStartStockfish.run();
+        });
+
+        box.getChildren().addAll(title, twoPlayer, vsStockfish);
 
         // adjust styles for dark mode so popup text is readable
         boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
