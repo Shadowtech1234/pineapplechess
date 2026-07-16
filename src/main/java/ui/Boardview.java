@@ -16,7 +16,9 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.ScrollBar;
+import javafx.scene.control.ToggleGroup;
 import javafx.application.Platform;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -62,6 +64,7 @@ public class Boardview extends StackPane {
     private final DoubleProperty moveFontSize = new SimpleDoubleProperty(16);
 
     public boolean flipped = false;
+    private int stockfishDepth = 15;
 
     public Boardview(Chessgame game) {
         this(game, null);
@@ -207,7 +210,7 @@ public class Boardview extends StackPane {
         new Thread(() -> {
             try {
                 String fen = game.getFen();
-                String best = game.engine.getBestMove(fen, 15); //depth is 15
+                String best = game.engine.getBestMove(fen, stockfishDepth);
 
                 if (best == null) return;
 
@@ -215,6 +218,7 @@ public class Boardview extends StackPane {
                 Platform.runLater(() -> {
                     if (game.makeMove(m)) {
                         refresh();
+                        checkEndgame();
                     }
                 });
             } catch (IOException e) {
@@ -448,28 +452,20 @@ public class Boardview extends StackPane {
     private void processMove(Move move) {
         if (game.makeMove(move)) {
             System.out.println("Move made");
-            
+
             if (game.shouldFlipBoard()) {
                 flipped = !flipped;
             }
             updateMoveList();
-            if (game.isFiftyMoveDraw()) {
-                showEndgamePopup("Draw: 50-move rule");
-            } 
-            else if (game.isThreefoldRepetition()) {
-                showEndgamePopup("Draw: Threefold repetition");
-            } 
-            else if (game.isStalemate()) {
-                showEndgamePopup("Draw: Stalemate");
-            } 
-            else if (game.isInsufficientMaterial()) {
-                showEndgamePopup("Draw: Insufficient material");
-            } 
-            else if (game.isCheckmate(game.getTurn())) {
-                Piece.Color winner = game.getTurn() == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE;
-                showEndgamePopup("Checkmate! " + winner + " wins!");
+            refresh();
+
+            if (checkEndgame()) {
+                selectedRow = -1;
+                selectedCol = -1;
+                legalMoves.clear();
+                return;
             }
-            
+
             // Only ask Stockfish to move after a successful human move
             if (game.isVsStockfish()) {
                 requestStockfishMove();
@@ -481,9 +477,29 @@ public class Boardview extends StackPane {
         selectedRow = -1;
         selectedCol = -1;
         legalMoves.clear();
-        refresh();
     }
     
+    private boolean checkEndgame() {
+        if (game.isFiftyMoveDraw()) {
+            showEndgamePopup("Draw: 50-move rule");
+            return true;
+        } else if (game.isThreefoldRepetition()) {
+            showEndgamePopup("Draw: Threefold repetition");
+            return true;
+        } else if (game.isInsufficientMaterial()) {
+            showEndgamePopup("Draw: Insufficient material");
+            return true;
+        } else if (game.isStalemate()) {
+            showEndgamePopup("Draw: Stalemate");
+            return true;
+        } else if (game.isCheckmate(game.getTurn())) {
+            Piece.Color winner = game.getTurn() == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE;
+            showEndgamePopup("Checkmate! " + winner + " wins!");
+            return true;
+        }
+        return false;
+    }
+
     private void showPromotionPopup(Piece.Color color, Consumer<Piece> callback) {
         HBox buttons = new HBox(10);
         buttons.setAlignment(Pos.CENTER);
@@ -516,10 +532,8 @@ public class Boardview extends StackPane {
 
         VBox box = new VBox(content);
         box.setAlignment(Pos.CENTER);
-        box.setPrefWidth(300);
-        box.setPrefHeight(200);
-        box.setMaxWidth(300);
-        box.setMaxHeight(200);
+        box.setMaxWidth(420);
+        box.setMaxHeight(420);
         box.setMinWidth(Region.USE_PREF_SIZE);
         box.setMinHeight(Region.USE_PREF_SIZE);
         boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
@@ -542,12 +556,19 @@ public class Boardview extends StackPane {
         VBox box = new VBox(15);
         box.setAlignment(Pos.CENTER);
 
+        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
+
         Label label = new Label(message);
-        label.setStyle("-fx-font-size: 20; -fx-font-weight: bold;");
+        label.setStyle("-fx-font-size: 20; -fx-font-weight: bold; " +
+                (darkTheme ? "-fx-text-fill: white;" : "-fx-text-fill: #222;"));
 
         Button reset = new Button("Reset Game");
+        reset.setStyle(darkTheme
+                ? "-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: transparent;"
+                : "-fx-background-color: #e5e5e5; -fx-text-fill: #222; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: black; -fx-border-width: 1; -fx-border-radius: 6;");
         reset.setOnAction(e -> {
             game.reset();
+            flipped = false;
             hidePopup();
             refresh();
         });
@@ -698,10 +719,8 @@ public class Boardview extends StackPane {
         });
 
         vsStockfish.setOnAction(e -> {
-        game.setFlipBoard(false);
-        game.enableStockfish("engine/stockfish.exe");
-        hidePopup();
-        onStartStockfish.run();
+            hidePopup();
+            showStockfishSetupPopup(onStartTwoPlayer, onStartStockfish);
         });
 
         box.getChildren().addAll(title, twoPlayer, vsStockfish);
@@ -719,8 +738,79 @@ public class Boardview extends StackPane {
         }
 
         showPopup(box);
-    
+    }
 
+    private void showStockfishSetupPopup(Runnable onStartTwoPlayer, Runnable onStartStockfish) {
+        VBox box = new VBox(15);
+        box.setAlignment(Pos.CENTER);
+
+        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
+        String textColor = darkTheme ? "white" : "#222";
+
+        Label title = new Label("Stockfish Setup");
+        title.setStyle("-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: " + textColor + ";");
+
+        Label difficultyLabel = new Label("Choose difficulty:");
+        difficultyLabel.setStyle("-fx-font-size: 14; -fx-text-fill: " + textColor + ";");
+
+        RadioButton easy = new RadioButton("Easy");
+        RadioButton medium = new RadioButton("Medium");
+        RadioButton hard = new RadioButton("Hard");
+        easy.setStyle("-fx-text-fill: " + textColor + ";");
+        medium.setStyle("-fx-text-fill: " + textColor + ";");
+        hard.setStyle("-fx-text-fill: " + textColor + ";");
+
+        ToggleGroup difficultyGroup = new ToggleGroup();
+        easy.setToggleGroup(difficultyGroup);
+        medium.setToggleGroup(difficultyGroup);
+        hard.setToggleGroup(difficultyGroup);
+        medium.setSelected(true);
+
+        Label sideLabel = new Label("Choose your side:");
+        sideLabel.setStyle("-fx-font-size: 14; -fx-text-fill: " + textColor + ";");
+
+        RadioButton whiteSide = new RadioButton("White");
+        RadioButton blackSide = new RadioButton("Black");
+        whiteSide.setStyle("-fx-text-fill: " + textColor + ";");
+        blackSide.setStyle("-fx-text-fill: " + textColor + ";");
+
+        ToggleGroup sideGroup = new ToggleGroup();
+        whiteSide.setToggleGroup(sideGroup);
+        blackSide.setToggleGroup(sideGroup);
+        whiteSide.setSelected(true);
+
+        HBox buttonRow = new HBox(10);
+        buttonRow.setAlignment(Pos.CENTER);
+        Button start = new Button("Start Game");
+        Button cancel = new Button("Cancel");
+        String buttonStyle = darkTheme
+                ? "-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: transparent;"
+                : "-fx-background-color: #e5e5e5; -fx-text-fill: #222; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: black; -fx-border-width: 1; -fx-border-radius: 6;";
+        start.setStyle(buttonStyle);
+        cancel.setStyle(buttonStyle);
+
+        start.setOnAction(e -> {
+            stockfishDepth = easy.isSelected() ? 4 : hard.isSelected() ? 16 : 8; //stock fish diffictuly can be changed here
+            Piece.Color humanSide = whiteSide.isSelected() ? Piece.Color.WHITE : Piece.Color.BLACK;
+            game.enableStockfish("engine/stockfish.exe");
+            hidePopup();
+            if (humanSide == Piece.Color.BLACK) {
+                flipped = true;
+                requestStockfishMove();
+            } else {
+                flipped = false;
+            }
+            onStartStockfish.run();
+        });
+
+        cancel.setOnAction(e -> {
+            hidePopup();
+            showModeSelectPopup(onStartTwoPlayer, onStartStockfish);
+        });
+
+        buttonRow.getChildren().addAll(start, cancel);
+        box.getChildren().addAll(title, difficultyLabel, easy, medium, hard, sideLabel, whiteSide, blackSide, buttonRow);
+        showPopup(box);
     }
 
     public void showSettingsPopup() {

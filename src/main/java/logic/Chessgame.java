@@ -319,7 +319,6 @@ public class Chessgame {
         theme = t;
     }
 
-
     //stockfish
     private boolean vsStockfish = false;
     public StockfishEngine engine;
