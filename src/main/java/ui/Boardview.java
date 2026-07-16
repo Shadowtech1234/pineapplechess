@@ -711,9 +711,11 @@ public class Boardview extends StackPane {
         if (darkTheme) {
             title.setStyle("-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: white;");
             twoPlayer.setStyle("-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 8 12 8 12;");
+            vsStockfish.setStyle("-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 8 12 8 12;");
         } else {
             title.setStyle("-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: #222;");
             twoPlayer.setStyle("-fx-background-color: #e5e5e5; -fx-text-fill: #222; -fx-background-radius: 6; -fx-padding: 8 12 8 12;");
+            vsStockfish.setStyle("-fx-background-color: #e5e5e5; -fx-text-fill: #222; -fx-background-radius: 6; -fx-padding: 8 12 8 12;");
         }
 
         showPopup(box);
