@@ -825,12 +825,18 @@ public class Boardview extends StackPane {
         flipToggle.setOnAction(e -> {
             boolean enabled = flipToggle.isSelected();
             game.setFlipBoard(enabled);
-            if (enabled) {
-                // when enabling flip mode, show the current player's side at bottom
-                this.flipped = (game.getTurn() == logic.pieces.Piece.Color.BLACK);
+            if (!game.isVsStockfish()) {
+                if (enabled) {
+                    // when enabling flip mode, show the current player's side at bottom
+                    this.flipped = (game.getTurn() == logic.pieces.Piece.Color.BLACK);
+                } else {
+                    // when disabling, always show white at bottom
+                    this.flipped = false;
+                }
             } else {
-                // when disabling, always show white at bottom
-                this.flipped = false;
+                // If Stockfish mode is active, we force the view 
+                // (e.g., keeping it consistent or following a fixed orientation)
+                this.flipped = false; 
             }
         });
 

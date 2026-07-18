@@ -43,7 +43,12 @@ public class Chessgame {
         this.flipBoard = flip;
     }
 
+    //testing gemma
     public boolean shouldFlipBoard() {
+        //return flipBoard;
+        if (this.vsStockfish) {
+            return false;
+        }
         return flipBoard;
     }
 
