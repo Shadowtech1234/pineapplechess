@@ -628,7 +628,22 @@ public class Boardview extends StackPane {
 
     private void applyThemeToMoveList() {
         boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
-        String bg = darkTheme ? "#2b2b2b" : "#f5f5f5";
+    // Inside boardview constructor
+    String bg;
+    switch (game.getTheme()) {
+        case PINEAPPLE: bg = "#FFDE59"; break; // Bright Yellow-ish
+        case DARK:      bg = "#1a1a1a";         break;
+        default:        bg = "#ffffff";         break; // Light
+    }
+
+    this.setStyle("-fx-background-color: " + bg + ";");
+    mainContainer.setStyle("-fx-background-color: " + bg + ";");
+    boardContainer.setStyle("-fx-background-color: " + bg + ";");
+    boardArea.setStyle("-fx-background-color: " + bg + ";");
+    leftSpacer.setStyle("-fx-background-color: " + bg + ";");
+    rightSpacer.setStyle("-fx-background-color: " + bg + ";");
+    topSpacer.setStyle("-fx-background-color: " + bg + ";");
+    bottomSpacer.setStyle("-fx-background-color: " + bg + ";");
         String text = darkTheme ? "white" : "#222222";
         // match sidebar look and add a left border to separate from the board
         moveList.setStyle("-fx-font-size: 16px; -fx-background-color: " + bg + "; -fx-control-inner-background: " + bg + "; -fx-text-fill: " + text + "; -fx-border-color: black; -fx-border-width: 0 0 0 1;");

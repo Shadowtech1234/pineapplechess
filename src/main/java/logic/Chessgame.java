@@ -312,7 +312,7 @@ public class Chessgame {
 
     //theme light and dark not pineapple and not pineapple
     public enum Theme {
-        LIGHT, DARK
+        LIGHT, DARK, PINEAPPLE
     }
     private Theme theme = Theme.LIGHT;
 
