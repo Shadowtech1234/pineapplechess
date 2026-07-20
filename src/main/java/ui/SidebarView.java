@@ -21,13 +21,13 @@ public class SidebarView extends VBox {
         setAlignment(Pos.TOP_CENTER);
 
         Button play = new Button("Play");
-        Button importBtn = new Button("Import");
-        Button exportBtn = new Button("Export");
+        //Button importBtn = new Button("Import");
+        //Button exportBtn = new Button("Export");
         Button settings = new Button("Settings");
 
         play.setMaxWidth(Double.MAX_VALUE);
-        importBtn.setMaxWidth(Double.MAX_VALUE);
-        exportBtn.setMaxWidth(Double.MAX_VALUE);
+        //importBtn.setMaxWidth(Double.MAX_VALUE);
+        //exportBtn.setMaxWidth(Double.MAX_VALUE);
         settings.setMaxWidth(Double.MAX_VALUE);
 
         board.setBoardDisabled(true);
@@ -48,7 +48,8 @@ public class SidebarView extends VBox {
             );
         });
 
-        getChildren().addAll(play, importBtn, exportBtn, settings);
+        //getChildren().addAll(play, importBtn, exportBtn, settings);
+        getChildren().addAll(play, settings);
         applyThemeStyle();
 
         settings.setOnAction(e -> board.showSettingsPopup());
