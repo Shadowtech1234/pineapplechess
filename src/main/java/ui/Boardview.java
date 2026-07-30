@@ -66,6 +66,8 @@ public class Boardview extends StackPane {
     public boolean flipped = false;
     private int stockfishDepth = 15;
 
+    private boolean usePineappleTheme = true; //set dedfault theme state
+
     public Boardview(Chessgame game) {
         this(game, null);
     }
@@ -384,7 +386,8 @@ public class Boardview extends StackPane {
                             + type + ".png";
                     try {
                         String preferredFolder = flipped ? "flipped" : "normal";
-                        Image img = loadPieceImage(name, preferredFolder);
+                        //Image img = loadPieceImage(name, preferredFolder);
+                        Image img = loadPieceImage(piece);
                         ImageView iv = new ImageView(img);
                         iv.fitWidthProperty().bind(tileSize.multiply(0.8));
                         iv.fitHeightProperty().bind(tileSize.multiply(0.8));
@@ -671,6 +674,10 @@ public class Boardview extends StackPane {
         return "-fx-padding: 8 12 8 12; -fx-background-color: " + bg + "; -fx-text-fill: " + text + "; -fx-font-size: " + moveFontSize.get() + "px;";
     }
 
+
+    //OLD PEICE IMAGE LOADER
+
+    /* 
     private Image loadPieceImage(String fileName, String preferredFolder) {
         Image img = null;
         List<String> resourcePaths = new ArrayList<>();
@@ -713,6 +720,47 @@ public class Boardview extends StackPane {
         }
         return img;
     }
+        */ 
+
+
+    private Image loadPieceImage(Piece piece) {
+        String colorStr = (piece.getColor() == Piece.Color.WHITE) ? "white" : "black";
+        String typeStr = piece.getType().toString().toLowerCase(); 
+        
+        // ex "whiteking.png"
+        String fileName = colorStr + typeStr + ".png";
+
+        String resourcePath;
+        String filePath;
+
+        if (usePineappleTheme) {
+            // PINEAPPLE PIECES DIRECTORY
+            resourcePath = "/pineapple/" + fileName;
+            filePath = "src/main/resources/pineapple/" + fileName;
+        } else {
+            //  OLD / CLASSIC PIECES DIRECTORY 
+            resourcePath = "/normal/" + fileName;
+            filePath = "src/main/resources/normal/" + fileName;
+        }
+
+        // 1. Try loading from Classpath
+        try {
+            var is = getClass().getResourceAsStream(resourcePath);
+            if (is != null) {
+                return new Image(is);
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Fallback to direct File path (solves IDE out of sync issue during dev)
+        File file = new File(filePath);
+        if (file.exists()) {
+            return new Image(file.toURI().toString());
+        }
+
+        System.err.println("Could not find piece image at resource path: " + resourcePath + " OR file path: " + file.getAbsolutePath());
+        return null;
+    }
+
 
 
     public void showModeSelectPopup(Runnable onStartTwoPlayer, Runnable onStartStockfish) {
@@ -842,15 +890,11 @@ public class Boardview extends StackPane {
             game.setFlipBoard(enabled);
             if (!game.isVsStockfish()) {
                 if (enabled) {
-                    // when enabling flip mode, show the current player's side at bottom
                     this.flipped = (game.getTurn() == logic.pieces.Piece.Color.BLACK);
                 } else {
-                    // when disabling, always show white at bottom
                     this.flipped = false;
                 }
             } else {
-                // If Stockfish mode is active, we force the view 
-                // (e.g., keeping it consistent or following a fixed orientation)
                 this.flipped = false; 
             }
         });
@@ -859,6 +903,16 @@ public class Boardview extends StackPane {
         darkMode.setSelected(game.getTheme() == Chessgame.Theme.DARK);
         darkMode.setOnAction(e -> {
             game.setTheme(darkMode.isSelected() ? Chessgame.Theme.DARK : Chessgame.Theme.LIGHT);
+            refresh();
+            if (sidebar != null) {
+                sidebar.refreshTheme();
+            }
+        });
+
+        CheckBox pineappleThemeCheckBox = new CheckBox("Pineapple Pieces");
+        pineappleThemeCheckBox.setSelected(usePineappleTheme);
+        pineappleThemeCheckBox.setOnAction(e -> {
+            usePineappleTheme = pineappleThemeCheckBox.isSelected();
             refresh();
             if (sidebar != null) {
                 sidebar.refreshTheme();
@@ -878,17 +932,19 @@ public class Boardview extends StackPane {
             title.setStyle("-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: white;");
             flipToggle.setStyle("-fx-text-fill: white;");
             darkMode.setStyle("-fx-text-fill: white;");
+            pineappleThemeCheckBox.setStyle("-fx-text-fill: white;");
             close.setStyle("-fx-background-color: #444; -fx-text-fill: white;");
         } else {
             title.setStyle("-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: #222;");
             flipToggle.setStyle("-fx-text-fill: #222;");
             darkMode.setStyle("-fx-text-fill: #222;");
+            pineappleThemeCheckBox.setStyle("-fx-text-fill: #222;");
             close.setStyle("");
         }
 
-        box.getChildren().addAll(title, flipToggle, darkMode, close);
+        // Added pineappleThemeCheckBox into box children here!
+        box.getChildren().addAll(title, flipToggle, darkMode, pineappleThemeCheckBox, close);
         showPopup(box);
-
     }
 
 
