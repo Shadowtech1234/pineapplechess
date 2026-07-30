@@ -76,18 +76,42 @@ public class Boardview extends StackPane {
     public Boardview(Chessgame game, SidebarView sidebar) {
         this.game = game;
         this.sidebar = sidebar;
-        applyThemeToMoveList();
+        //applyThemeToMoveList();
         applyThemeToBackgrounds();
         moveList.setCellFactory(lv -> {
             ListCell<String> cell = new ListCell<>() {
                 @Override
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
-                    if (empty) {
+                    if (empty || item == null) {
                         setText(null);
+                        setStyle("-fx-background-color: transparent;");
                     } else {
                         setText(item);
-                        setStyle(getMoveListCellStyle());
+
+                        // 1. Get current index (0-based) to check even vs odd row
+                        boolean isEven = (getIndex() % 2 == 0);
+                        Chessgame.Theme theme = game.getTheme();
+
+                        String cellBg;
+                        String txtColor;
+
+                        if (theme == Chessgame.Theme.DARK) {
+                            // Dark Mode: Alternating dark grays
+                            cellBg = isEven ? "#2A2A2A" : "#1F1F1F";
+                            txtColor = "white";
+                        } else if (theme == Chessgame.Theme.PINEAPPLE) {
+                            // Pineapple Mode: Alternating light/medium yellows
+                            cellBg = isEven ? "#FFF3C4" : "#FFEAA7";
+                            txtColor = "#222222";
+                        } else {
+                            // Light / Normal Mode: Alternating off-whites / subtle grays
+                            cellBg = isEven ? "#FFFFFF" : "#F2F2F2";
+                            txtColor = "#222222";
+                        }
+
+                        // 2. Apply background color and text color per row
+                        setStyle("-fx-background-color: " + cellBg + "; -fx-text-fill: " + txtColor + ";");
                     }
                 }
             };
@@ -375,8 +399,13 @@ public class Boardview extends StackPane {
                 } 
                 else if (game.getTheme() == Chessgame.Theme.PINEAPPLE) {
                     // Pineapple Board Theme (Soft Yellow & Fresh Green)
+                    /* 
                     lightColor = Color.web("rgb(240, 203, 91)");
                     darkColor = Color.web("#2ED573");
+                    */
+                    lightColor = Color.web("rgb(253, 221, 122)");
+                    darkColor = Color.web("#87d0a5");
+
                 } 
                 else {
                     // Fallback default
@@ -571,10 +600,14 @@ public class Boardview extends StackPane {
         box.setMaxHeight(420);
         box.setMinWidth(Region.USE_PREF_SIZE);
         box.setMinHeight(Region.USE_PREF_SIZE);
-        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
-        box.setStyle(darkTheme
-                ? "-fx-background-color: #2a2a2a; -fx-padding: 20; -fx-background-radius: 10; -fx-text-fill: white;"
-                : "-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 10; -fx-text-fill: #222;");
+
+        String boxStyle = switch (game.getTheme()) {
+            case DARK -> "-fx-background-color: #2a2a2a; -fx-padding: 20; -fx-background-radius: 10; -fx-text-fill: white;";
+            case PINEAPPLE -> "-fx-background-color: #FFF3C4; -fx-padding: 20; -fx-background-radius: 10; -fx-border-color: #F1C40F; -fx-border-width: 2; -fx-border-radius: 10; -fx-text-fill: #222;";
+            default -> "-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 10; -fx-text-fill: #222;";
+        };
+
+        box.setStyle(boxStyle);
 
         StackPane.setAlignment(box, Pos.CENTER);
 
@@ -615,7 +648,7 @@ public class Boardview extends StackPane {
     public void refresh() {
         buildBoard();
         updateMoveList();
-        applyThemeToMoveList();
+        //applyThemeToMoveList();
         applyThemeToBackgrounds();
         if (sidebar != null) {
             sidebar.refreshTheme();
@@ -661,6 +694,9 @@ public class Boardview extends StackPane {
         if (!formatted.isEmpty()) moveList.scrollTo(0);
     }
 
+
+    //IF WANT TO REACTIVE REMEMBER TO UN COMMMENT THE PLACES WHERE THIS FUNC IS CALLED
+    /* 
     private void applyThemeToMoveList() {
         boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
     // Inside boardview constructor
@@ -683,12 +719,28 @@ public class Boardview extends StackPane {
         // match sidebar look and add a left border to separate from the board
         moveList.setStyle("-fx-font-size: 16px; -fx-background-color: " + bg + "; -fx-control-inner-background: " + bg + "; -fx-text-fill: " + text + "; -fx-border-color: black; -fx-border-width: 0 0 0 1;");
     }
+        */
 
     private void applyThemeToBackgrounds() {
-        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
-        String bg = darkTheme ? "#1a1a1a" : "#ffffff";
-        
-        // Apply background to all containers and spacers
+        String bg;
+        String textColor;
+
+        switch (game.getTheme()) {
+            case PINEAPPLE -> {
+                bg = "#fcea9f";        // Pineapple Yellow
+                textColor = "#222222"; // Dark text
+            }
+            case DARK -> {
+                bg = "#1a1a1a";        // Dark Gray
+                textColor = "#ffffff"; // White text
+            }
+            default -> { // LIGHT
+                bg = "#ffffff";        // White
+                textColor = "#222222"; // Dark text
+            }
+        }
+
+        // Apply main backgrounds
         this.setStyle("-fx-background-color: " + bg + ";");
         mainContainer.setStyle("-fx-background-color: " + bg + ";");
         boardContainer.setStyle("-fx-background-color: " + bg + ";");
@@ -697,6 +749,15 @@ public class Boardview extends StackPane {
         rightSpacer.setStyle("-fx-background-color: " + bg + ";");
         topSpacer.setStyle("-fx-background-color: " + bg + ";");
         bottomSpacer.setStyle("-fx-background-color: " + bg + ";");
+
+        // Apply theme styling to Move History List AND its individual cells
+        moveList.setStyle(
+            "-fx-font-size: 16px; " +
+            "-fx-background-color: " + bg + "; " +
+            "-fx-control-inner-background: " + bg + "; " +
+            "-fx-text-fill: " + textColor + "; " +
+            "-fx-border-color: black; -fx-border-width: 0 0 0 1;"
+        );
     }
 
     private String getMoveListCellStyle() {
