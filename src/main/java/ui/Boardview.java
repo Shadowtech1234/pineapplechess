@@ -13,6 +13,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -342,6 +343,8 @@ public class Boardview extends StackPane {
                 Color color = light ? Color.BEIGE : Color.BROWN;
                 */
 
+
+                /*
                 boolean lightSquare = (uiRow + uiCol) % 2 == 0;
                 Color lightColor;
                 Color darkColor;
@@ -354,6 +357,35 @@ public class Boardview extends StackPane {
                     lightColor = Color.rgb(70, 70, 70);
                     darkColor = Color.rgb(40, 40, 40);
                 }
+                */
+
+                boolean lightSquare = (uiRow + uiCol) % 2 == 0;
+                Color lightColor;
+                Color darkColor;
+
+                if (game.getTheme() == Chessgame.Theme.LIGHT) {
+                    // Normal / Light Mode
+                    lightColor = Color.BEIGE;
+                    darkColor = Color.BROWN;
+                } 
+                else if (game.getTheme() == Chessgame.Theme.DARK) {
+                    // Dark Mode
+                    lightColor = Color.rgb(70, 70, 70);
+                    darkColor = Color.rgb(40, 40, 40);
+                } 
+                else if (game.getTheme() == Chessgame.Theme.PINEAPPLE) {
+                    // Pineapple Board Theme (Soft Yellow & Fresh Green)
+                    lightColor = Color.web("rgb(240, 203, 91)");
+                    darkColor = Color.web("#2ED573");
+                } 
+                else {
+                    // Fallback default
+                    lightColor = Color.BEIGE;
+                    darkColor = Color.BROWN;
+                }
+
+
+
 
                 Color color = lightSquare ? lightColor : darkColor; 
 
@@ -899,6 +931,9 @@ public class Boardview extends StackPane {
             }
         });
 
+
+        //old theme selector
+        /* 
         CheckBox darkMode = new CheckBox("Dark Mode");
         darkMode.setSelected(game.getTheme() == Chessgame.Theme.DARK);
         darkMode.setOnAction(e -> {
@@ -909,6 +944,46 @@ public class Boardview extends StackPane {
             }
         });
 
+
+        
+
+
+        */
+
+        //new theme selector
+        
+        Label themeLabel = new Label("Board Theme:");
+
+        ChoiceBox<String> themeDropdown = new ChoiceBox<>();
+        themeDropdown.getItems().addAll("Normal", "Dark", "Pineapple");
+
+        // Set initial selection based on current game theme
+        switch (game.getTheme()) {
+            case DARK -> themeDropdown.setValue("Dark");
+            case PINEAPPLE -> themeDropdown.setValue("Pineapple");
+            default -> themeDropdown.setValue("Normal");
+        }
+
+        themeDropdown.setOnAction(e -> {
+            String selected = themeDropdown.getValue();
+            switch (selected) {
+                case "Dark" -> game.setTheme(Chessgame.Theme.DARK);
+                case "Pineapple" -> game.setTheme(Chessgame.Theme.PINEAPPLE);
+                default -> game.setTheme(Chessgame.Theme.LIGHT); // Normal / BEIGE & BROWN
+            }
+            refresh();
+            if (sidebar != null) {
+                sidebar.refreshTheme();
+            }
+        });
+
+        // Lay out the label and dropdown side-by-side
+        HBox themeBox = new HBox(10, themeLabel, themeDropdown);
+        themeBox.setAlignment(Pos.CENTER);
+
+        //end of new theme selector
+
+
         CheckBox pineappleThemeCheckBox = new CheckBox("Pineapple Pieces");
         pineappleThemeCheckBox.setSelected(usePineappleTheme);
         pineappleThemeCheckBox.setOnAction(e -> {
@@ -918,6 +993,8 @@ public class Boardview extends StackPane {
                 sidebar.refreshTheme();
             }
         });
+
+        
 
         Button close = new Button("Close");
         close.setOnAction(e -> {
@@ -930,20 +1007,23 @@ public class Boardview extends StackPane {
         boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
         if (darkTheme) {
             title.setStyle("-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: white;");
+            themeLabel.setStyle("-fx-text-fill: white;"); // Keep label readable in dark mode
             flipToggle.setStyle("-fx-text-fill: white;");
-            darkMode.setStyle("-fx-text-fill: white;");
             pineappleThemeCheckBox.setStyle("-fx-text-fill: white;");
             close.setStyle("-fx-background-color: #444; -fx-text-fill: white;");
         } else {
             title.setStyle("-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: #222;");
+            themeLabel.setStyle("-fx-text-fill: #222;");
             flipToggle.setStyle("-fx-text-fill: #222;");
-            darkMode.setStyle("-fx-text-fill: #222;");
             pineappleThemeCheckBox.setStyle("-fx-text-fill: #222;");
             close.setStyle("");
         }
 
         // Added pineappleThemeCheckBox into box children here!
-        box.getChildren().addAll(title, flipToggle, darkMode, pineappleThemeCheckBox, close);
+        //box.getChildren().addAll(title, flipToggle, darkMode, pineappleThemeCheckBox, close);
+        
+        
+        box.getChildren().addAll(title, flipToggle, themeBox, pineappleThemeCheckBox, close);
         showPopup(box);
     }
 
