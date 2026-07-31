@@ -38,5 +38,7 @@ First 3 pictures showcase the themes available, then the next 3 are just showcas
 4. Run `MainLauncher.java` or `main.java`.
 
 ---
+<p align="center">Powered by the open-source <a href="https://stockfishchess.org/">Stockfish</a> chess engine for computer move generation and position evaluation.</p>
 
+---
 <p align="center">Made with ❤️ by <a href="https://github.com/Shadowtech1234">Theenash</a></p>
