@@ -17,7 +17,7 @@ First 3 pictures showcase the themes available, then the next 3 are just showcas
 
 ##  Features
 
-* **Custom Pineapple Visual Theme:** Features custom-drawn pineapple themed chess pieces alongside classic piece sets.
+* **Custom Pineapple Visual Theme:** Features pineapple themed chess pieces alongside classic piece sets.
 * **Interactive UI & Sidebar:** Displays real-time game status, turn tracking, and move history controls.
 * **Standalone Execution:** Built as a native Windows installer (`.exe`) with bundled JavaFX runtime components, no system JDK required.
 * **Pure Java Rules Engine:** Complete chess logic and board state management handled directly in custom Java classes.
