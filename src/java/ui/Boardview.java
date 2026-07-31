@@ -835,24 +835,31 @@ public class Boardview extends StackPane {
         String filePath;
 
         if (usePineappleTheme) {
-            // PINEAPPLE PIECES DIRECTORY
-            resourcePath = "/pineapple/" + fileName;
+            // Updated to include /resources/
+            resourcePath = "/resources/pineapple/" + fileName;
             filePath = "src/resources/pineapple/" + fileName;
         } else {
-            //  OLD / CLASSIC PIECES DIRECTORY 
-            resourcePath = "/normal/" + fileName;
+            // Updated to include /resources/
+            resourcePath = "/resources/normal/" + fileName;
             filePath = "src/resources/normal/" + fileName;
         }
 
-        // 1. Try loading from Classpath
+        // 1. Try loading from Classpath (JAR)
         try {
             var is = getClass().getResourceAsStream(resourcePath);
             if (is != null) {
                 return new Image(is);
             }
+            
+            // Secondary check: in case your build tool put pineapple directly at root
+            String altPath = usePineappleTheme ? "/pineapple/" + fileName : "/normal/" + fileName;
+            var altIs = getClass().getResourceAsStream(altPath);
+            if (altIs != null) {
+                return new Image(altIs);
+            }
         } catch (Exception ignored) {}
 
-        // 2. Fallback to direct File path (solves IDE out of sync issue during dev)
+        // 2. Fallback to direct File path (IDE dev mode)
         File file = new File(filePath);
         if (file.exists()) {
             return new Image(file.toURI().toString());

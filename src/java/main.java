@@ -1,46 +1,17 @@
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import ui.Boardview;
 import ui.SidebarView;
 import logic.Chessgame;
-
-//i pray this works
+import java.io.File; 
 
 public class main extends Application {
 
     @Override
-
-    public void start(Stage stage) {
-        stage.setTitle("Pineapple Chess");
-
-        try {
-            Image appIcon = null;
-
-            // 1. Try Classpath
-            var iconStream = getClass().getResourceAsStream("/pineapple/whiteking.png");
-            if (iconStream != null) {
-                appIcon = new Image(iconStream);
-            } else {
-                // 2. Try Direct File System
-                java.io.File iconFile = new java.io.File("src/resources/pineapple/whiteking.png");
-                if (iconFile.exists()) {
-                    appIcon = new Image(iconFile.toURI().toString());
-                }
-            }
-
-            if (appIcon != null) {
-                stage.getIcons().add(appIcon);
-            } else {
-                System.err.println("Could not find whiteking.png icon in resources or file path!");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public void start(Stage primaryStage) {
 
         Chessgame game = new Chessgame();
         Boardview board = new Boardview(game);
@@ -54,42 +25,35 @@ public class main extends Application {
         root.setStyle("-fx-border-color: black; -fx-border-width: 0 1 0 0;");
 
         Scene scene = new Scene(root, 900, 640);
-        stage.setScene(scene);
-        stage.show();
+        primaryStage.setScene(scene);
 
+        // --- STEP 3 CODE GOES HERE ---
+        try {
+            // 1. Try loading from inside the JAR / Classpath
+            var iconStream = getClass().getResourceAsStream("/resources/pineapple/whiteking.png");
+            if (iconStream == null) {
+                iconStream = getClass().getResourceAsStream("/pineapple/whiteking.png");
+            }
 
+            if (iconStream != null) {
+                primaryStage.getIcons().add(new Image(iconStream));
+                System.out.println("SUCCESS: Loaded icon from classpath!");
+            } else {
+                // 2. Direct File Fallback (Works during VS Code testing!)
+                File iconFile = new File("src/resources/pineapple/whiteking.png");
+                if (iconFile.exists()) {
+                    primaryStage.getIcons().add(new Image(iconFile.toURI().toString()));
+                    System.out.println("SUCCESS: Loaded icon from local file path!");
+                } else {
+                    System.err.println("ERROR: Could not find whiteking.png anywhere!");
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load window icon: " + e.getMessage());
+        }
 
-        //trying out new sidebar
-        /* 
-        StackPane root = new StackPane();
-        root.getChildren().add(board);
-
-        Scene scene = new Scene(root, 800, 640);
-        stage.setScene(scene);
-        stage.show();
-        */
-
-        //why not work :(
-        /* 
-        BorderPane root = new BorderPane();
-        root.setCenter(board);
-        root.setRight(board.getMoveList());
-
-        Scene scnene = new Scene(root, 840, 640);
-
-        stage.setTitle("Pineapple Chess");
-        stage.setScene(scnene);
-        stage.show();
-        */
-
-        /* 
-        Label label = new Label("no chess yet :(");
-        Scene scene = new Scene(new StackPane(label), 400, 300);
-        stage.setTitle("Pineapple Chess");
-        stage.setScene(scene);
-        stage.show();
-        */
-
+        primaryStage.setTitle("Pineapple Chess");
+        primaryStage.show();
     }
 
     public static void main(String[] args) {
