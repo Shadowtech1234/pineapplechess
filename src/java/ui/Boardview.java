@@ -1092,6 +1092,8 @@ public class Boardview extends StackPane {
             if (sidebar != null) sidebar.refreshTheme();
         });
 
+        Label versionLabel = new Label("v1.0.0");
+
         
 
         // apply per control text color so dark mode popup text is readable
@@ -1102,12 +1104,14 @@ public class Boardview extends StackPane {
             flipToggle.setStyle("-fx-text-fill: white;");
             pineappleThemeCheckBox.setStyle("-fx-text-fill: white;");
             close.setStyle("-fx-background-color: #444; -fx-text-fill: white;");
+            versionLabel.setStyle("-fx-text-fill: white;");
         } else {
             title.setStyle("-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: #222;");
             themeLabel.setStyle("-fx-text-fill: #222;");
             flipToggle.setStyle("-fx-text-fill: #222;");
             pineappleThemeCheckBox.setStyle("-fx-text-fill: #222;");
             close.setStyle("");
+            versionLabel.setStyle("-fx-text-fill: #222;");
         }
 
         applyPopupButtonStyle(close);
@@ -1116,7 +1120,7 @@ public class Boardview extends StackPane {
         //box.getChildren().addAll(title, flipToggle, darkMode, pineappleThemeCheckBox, close);
         
         
-        box.getChildren().addAll(title, flipToggle, themeBox, pineappleThemeCheckBox, close);
+        box.getChildren().addAll(title, flipToggle, themeBox, pineappleThemeCheckBox, close, versionLabel);
         showPopup(box);
     }
 
