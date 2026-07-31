@@ -1,6 +1,7 @@
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -15,6 +16,32 @@ public class main extends Application {
     @Override
 
     public void start(Stage stage) {
+        stage.setTitle("Pineapple Chess");
+
+        try {
+            Image appIcon = null;
+
+            // 1. Try Classpath
+            var iconStream = getClass().getResourceAsStream("/pineapple/whiteking.png");
+            if (iconStream != null) {
+                appIcon = new Image(iconStream);
+            } else {
+                // 2. Try Direct File System
+                java.io.File iconFile = new java.io.File("src/main/resources/pineapple/whiteking.png");
+                if (iconFile.exists()) {
+                    appIcon = new Image(iconFile.toURI().toString());
+                }
+            }
+
+            if (appIcon != null) {
+                stage.getIcons().add(appIcon);
+            } else {
+                System.err.println("Could not find whiteking.png icon in resources or file path!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         Chessgame game = new Chessgame();
         Boardview board = new Boardview(game);
 
