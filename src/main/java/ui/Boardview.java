@@ -855,23 +855,53 @@ public class Boardview extends StackPane {
     }
 
 
+    private void applyPopupButtonStyle(Button button) {
+        if (button == null) return;
+
+        String btnBg;
+        String textColor;
+
+        switch (game.getTheme()) {
+            case PINEAPPLE -> {
+                btnBg = "#fff09d";      // Golden Yellow Button
+                textColor = "#222222";
+            }
+            case DARK -> {
+                btnBg = "#3a3a3a";      // Dark Gray Button
+                textColor = "#ffffff";
+            }
+            default -> { // LIGHT / Normal
+                btnBg = "#e5e5e5";      // Light Gray Button
+                textColor = "#222222";
+            }
+        }
+
+        button.setStyle(
+            "-fx-background-color: " + btnBg + "; " +
+            "-fx-text-fill: " + textColor + "; " +
+            "-fx-background-radius: 6; " +
+            "-fx-padding: 8 12 8 12; " +
+            "-fx-border-color: black; -fx-border-width: 1; -fx-border-radius: 6;"
+        );
+    }
+
 
     public void showModeSelectPopup(Runnable onStartTwoPlayer, Runnable onStartStockfish) {
         VBox box = new VBox(15);
         box.setAlignment(Pos.CENTER);
 
         Label title = new Label("Choose Game Mode");
-        title.setStyle("-fx-font-size: 20; -fx-font-weight: bold;");
+        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
+        title.setStyle("-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: " + (darkTheme ? "white" : "#222") + ";");
 
         Button twoPlayer = new Button("2 Player Mode");
         Button vsStockfish = new Button("Play vs Stockfish");
 
         twoPlayer.setOnAction(e -> {
-        //game.setFlipBoard(true); // gotta add the flip board latter, this isnt added add it later THEN UN COMMENT IT 
-        game.disableStockfish();
-        game.setFlipBoard(true);
-        hidePopup();
-        onStartTwoPlayer.run();
+            game.disableStockfish();
+            game.setFlipBoard(true);
+            hidePopup();
+            onStartTwoPlayer.run();
         });
 
         vsStockfish.setOnAction(e -> {
@@ -879,20 +909,11 @@ public class Boardview extends StackPane {
             showStockfishSetupPopup(onStartTwoPlayer, onStartStockfish);
         });
 
+        // Apply dynamic theme button styling
+        applyPopupButtonStyle(twoPlayer);
+        applyPopupButtonStyle(vsStockfish);
+
         box.getChildren().addAll(title, twoPlayer, vsStockfish);
-
-        // adjust styles for dark mode so popup text is readable
-        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
-        if (darkTheme) {
-            title.setStyle("-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: white;");
-            twoPlayer.setStyle("-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 8 12 8 12;");
-            vsStockfish.setStyle("-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 8 12 8 12;");
-        } else {
-            title.setStyle("-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: #222;");
-            twoPlayer.setStyle("-fx-background-color: #e5e5e5; -fx-text-fill: #222; -fx-background-radius: 6; -fx-padding: 8 12 8 12;");
-            vsStockfish.setStyle("-fx-background-color: #e5e5e5; -fx-text-fill: #222; -fx-background-radius: 6; -fx-padding: 8 12 8 12;");
-        }
-
         showPopup(box);
     }
 
@@ -939,14 +960,13 @@ public class Boardview extends StackPane {
         buttonRow.setAlignment(Pos.CENTER);
         Button start = new Button("Start Game");
         Button cancel = new Button("Cancel");
-        String buttonStyle = darkTheme
-                ? "-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: transparent;"
-                : "-fx-background-color: #e5e5e5; -fx-text-fill: #222; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: black; -fx-border-width: 1; -fx-border-radius: 6;";
-        start.setStyle(buttonStyle);
-        cancel.setStyle(buttonStyle);
+
+        // Apply dynamic theme button styling
+        applyPopupButtonStyle(start);
+        applyPopupButtonStyle(cancel);
 
         start.setOnAction(e -> {
-            stockfishDepth = easy.isSelected() ? 4 : hard.isSelected() ? 16 : 8; //stock fish diffictuly can be changed here
+            stockfishDepth = easy.isSelected() ? 4 : hard.isSelected() ? 16 : 8; // stockfish difficulty
             Piece.Color humanSide = whiteSide.isSelected() ? Piece.Color.WHITE : Piece.Color.BLACK;
             game.enableStockfish("engine/stockfish.exe");
             hidePopup();

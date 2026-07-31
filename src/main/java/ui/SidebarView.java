@@ -60,16 +60,41 @@ public class SidebarView extends VBox {
     }
 
     private void applyThemeStyle() {
-        boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
-        setStyle(darkTheme
-            ? "-fx-background-color: #222; -fx-text-fill: white; -fx-border-color: black; -fx-border-width: 0 1 0 0;"
-            : "-fx-background-color: #ddd; -fx-text-fill: #222; -fx-border-color: black; -fx-border-width: 0 1 0 0;");
+        String sidebarBg;
+        String btnBg;
+        String textColor;
 
+        switch (game.getTheme()) {
+            case PINEAPPLE -> {
+                sidebarBg = "#FFDE59";  // Pineapple Yellow
+                btnBg = "#fff09d";      // Golden Yellow Button
+                textColor = "#222222";
+            }
+            case DARK -> {
+                sidebarBg = "#222222";  // Dark Gray
+                btnBg = "#3a3a3a";      // Dark Button
+                textColor = "#ffffff";
+            }
+            default -> { // LIGHT / Normal
+                sidebarBg = "#dddddd";  // Light Gray
+                btnBg = "#ffffff";      // White Button
+                textColor = "#222222";
+            }
+        }
+
+        // Apply sidebar background and right border
+        setStyle("-fx-background-color: " + sidebarBg + "; -fx-border-color: black; -fx-border-width: 0 1 0 0;");
+
+        // Apply button styling with permanent BLACK border
         for (Node node : getChildren()) {
             if (node instanceof Button button) {
-                button.setStyle(darkTheme
-                        ? "-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: transparent;"
-                        : "-fx-background-color: #e5e5e5; -fx-text-fill: #222; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: black; -fx-border-width: 1; -fx-border-radius: 6;");
+                button.setStyle(
+                    "-fx-background-color: " + btnBg + "; " +
+                    "-fx-text-fill: " + textColor + "; " +
+                    "-fx-background-radius: 6; " +
+                    "-fx-padding: 8 12 8 12; " +
+                    "-fx-border-color: black; -fx-border-width: 1; -fx-border-radius: 6;"
+                );
             }
         }
     }
