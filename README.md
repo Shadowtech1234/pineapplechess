@@ -6,7 +6,7 @@ A custom JavaFX desktop chess game featuring custom asset themes, interactive bo
 
 ---
 
-## 🎮 Quick Start
+##  Quick Start
 
 1. Download the latest installer **`PineappleChess-1.0.0.exe`** from the Releases section.
 2. Double-click to run the setup wizard and follow the prompts.
@@ -14,7 +14,7 @@ A custom JavaFX desktop chess game featuring custom asset themes, interactive bo
 
 ---
 
-## ✨ Features
+##  Features
 
 * **Custom Pineapple Visual Theme:** Features custom-drawn pineapple themed chess pieces alongside classic piece sets.
 * **Interactive UI & Sidebar:** Displays real-time game status, turn tracking, and move history controls.
@@ -23,7 +23,7 @@ A custom JavaFX desktop chess game featuring custom asset themes, interactive bo
 
 ---
 
-## 🛠️ How to Run Locally (For Developers)
+##  How to Run Locally (For Developers)
 
 ### Requirements
 * **Java Development Kit (JDK):** Version 24+ (Recommended: OpenJDK 26)
