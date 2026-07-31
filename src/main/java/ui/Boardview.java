@@ -641,7 +641,14 @@ public class Boardview extends StackPane {
             refresh();
         });
 
-        box.getChildren().addAll(label, reset);
+        Button close = new Button("Close");
+        close.setOnAction(e -> {
+            hidePopup();
+            refresh();
+            if (sidebar != null) sidebar.refreshTheme();
+        });
+
+        box.getChildren().addAll(label, reset, close);
         showPopup(box);
     }
 
