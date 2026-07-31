@@ -631,9 +631,7 @@ public class Boardview extends StackPane {
                 (darkTheme ? "-fx-text-fill: white;" : "-fx-text-fill: #222;"));
 
         Button reset = new Button("Reset Game");
-        reset.setStyle(darkTheme
-                ? "-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: transparent;"
-                : "-fx-background-color: #e5e5e5; -fx-text-fill: #222; -fx-background-radius: 6; -fx-padding: 8 12 8 12; -fx-border-color: black; -fx-border-width: 1; -fx-border-radius: 6;");
+        
         reset.setOnAction(e -> {
             game.reset();
             flipped = false;
@@ -647,6 +645,9 @@ public class Boardview extends StackPane {
             refresh();
             if (sidebar != null) sidebar.refreshTheme();
         });
+
+        applyPopupButtonStyle(reset);
+        applyPopupButtonStyle(close);
 
         box.getChildren().addAll(label, reset, close);
         showPopup(box);
