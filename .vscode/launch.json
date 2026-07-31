@@ -3,6 +3,13 @@
   "configurations": [
     {
       "type": "java",
+      "name": "MainLauncher",
+      "request": "launch",
+      "mainClass": "MainLauncher",
+      "projectName": "pineapplechess_41a30cbe"
+    },
+    {
+      "type": "java",
       "name": "Launch main",
       "request": "launch",
       "mainClass": "main",

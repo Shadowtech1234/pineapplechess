@@ -1093,6 +1093,8 @@ public class Boardview extends StackPane {
         });
 
         Label versionLabel = new Label("v1.0.0");
+        Label credits1Label = new Label("Pineapple Chess uses Stockfish, an open-source chess engine.");
+        Label credits3Label = new Label("Pineapple Chess is developed by Theenash M");
 
         
 
@@ -1105,6 +1107,8 @@ public class Boardview extends StackPane {
             pineappleThemeCheckBox.setStyle("-fx-text-fill: white;");
             close.setStyle("-fx-background-color: #444; -fx-text-fill: white;");
             versionLabel.setStyle("-fx-text-fill: white;");
+            credits1Label.setStyle("-fx-text-fill: white;");
+            credits3Label.setStyle("-fx-text-fill: white;");
         } else {
             title.setStyle("-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: #222;");
             themeLabel.setStyle("-fx-text-fill: #222;");
@@ -1112,6 +1116,8 @@ public class Boardview extends StackPane {
             pineappleThemeCheckBox.setStyle("-fx-text-fill: #222;");
             close.setStyle("");
             versionLabel.setStyle("-fx-text-fill: #222;");
+            credits1Label.setStyle("-fx-text-fill: #222;");
+            credits3Label.setStyle("-fx-text-fill: #222;");
         }
 
         applyPopupButtonStyle(close);
@@ -1120,7 +1126,7 @@ public class Boardview extends StackPane {
         //box.getChildren().addAll(title, flipToggle, darkMode, pineappleThemeCheckBox, close);
         
         
-        box.getChildren().addAll(title, flipToggle, themeBox, pineappleThemeCheckBox, close, versionLabel);
+        box.getChildren().addAll(title, flipToggle, themeBox, pineappleThemeCheckBox, close, versionLabel, credits1Label, credits3Label);
         showPopup(box);
     }
 
