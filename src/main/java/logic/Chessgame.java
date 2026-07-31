@@ -314,7 +314,7 @@ public class Chessgame {
     public enum Theme {
         LIGHT, DARK, PINEAPPLE
     }
-    private Theme theme = Theme.LIGHT;
+    private Theme theme = Theme.PINEAPPLE;
 
     public Theme getTheme() {
         return theme;
