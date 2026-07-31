@@ -35,3 +35,7 @@ A custom JavaFX desktop chess game featuring custom asset themes, interactive bo
 2. Open the project folder in VS Code.
 3. Ensure JavaFX libraries are added to your project's build path.
 4. Run `MainLauncher.java` or `main.java`.
+
+---
+
+<p align="center">Made with ❤️ by <a href="https://github.com/Shadowtech1234">Theenash</a></p>
