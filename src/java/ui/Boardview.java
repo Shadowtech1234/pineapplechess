@@ -837,11 +837,11 @@ public class Boardview extends StackPane {
         if (usePineappleTheme) {
             // PINEAPPLE PIECES DIRECTORY
             resourcePath = "/pineapple/" + fileName;
-            filePath = "src/main/resources/pineapple/" + fileName;
+            filePath = "src/resources/pineapple/" + fileName;
         } else {
             //  OLD / CLASSIC PIECES DIRECTORY 
             resourcePath = "/normal/" + fileName;
-            filePath = "src/main/resources/normal/" + fileName;
+            filePath = "src/resources/normal/" + fileName;
         }
 
         // 1. Try loading from Classpath
@@ -1092,6 +1092,8 @@ public class Boardview extends StackPane {
             if (sidebar != null) sidebar.refreshTheme();
         });
 
+        
+
         // apply per control text color so dark mode popup text is readable
         boolean darkTheme = game.getTheme() == Chessgame.Theme.DARK;
         if (darkTheme) {
@@ -1107,6 +1109,8 @@ public class Boardview extends StackPane {
             pineappleThemeCheckBox.setStyle("-fx-text-fill: #222;");
             close.setStyle("");
         }
+
+        applyPopupButtonStyle(close);
 
         // Added pineappleThemeCheckBox into box children here!
         //box.getChildren().addAll(title, flipToggle, darkMode, pineappleThemeCheckBox, close);

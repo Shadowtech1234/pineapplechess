@@ -27,7 +27,7 @@ public class main extends Application {
                 appIcon = new Image(iconStream);
             } else {
                 // 2. Try Direct File System
-                java.io.File iconFile = new java.io.File("src/main/resources/pineapple/whiteking.png");
+                java.io.File iconFile = new java.io.File("src/resources/pineapple/whiteking.png");
                 if (iconFile.exists()) {
                     appIcon = new Image(iconFile.toURI().toString());
                 }
