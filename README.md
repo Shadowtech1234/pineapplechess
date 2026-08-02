@@ -21,7 +21,7 @@ First 3 pictures showcase the themes available, then the next 3 are just showcas
 * **Interactive UI & Sidebar:** Displays move history, Stockfish game config, and settings to easily switch themes.
 * **Standalone Execution:** Built as a native Windows installer (`.exe`) with bundled JavaFX runtime components, no system JDK required.
 * **Play against Bots:** Powered by Stockfish, you can play against bots with varying difficulties.
-* **2 Player Mode:** If you have 2 people in front of a computer, you can play against each other on 1 computer! With a optional board flip feature!
+* **2 Player Mode:** If you have 2 people in front of a computer, you can play against each other on 1 computer! With an optional board flip feature!
 
 ---
 <p align="center">Powered by the open-source <a href="https://stockfishchess.org/">Stockfish</a> chess engine for computer move generation and position evaluation.</p>
