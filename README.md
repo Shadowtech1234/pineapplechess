@@ -23,21 +23,6 @@ First 3 pictures showcase the themes available, then the next 3 are just showcas
 * **Pure Java Rules Engine:** Complete chess logic and board state management handled directly in custom Java classes.
 
 ---
-
-##  How to Run Locally (For Developers)
-
-### Requirements
-* **Java Development Kit (JDK):** Version 24+ (Recommended: OpenJDK 26)
-* **JavaFX SDK:** Version 26.0.1 (or matching your JDK version)
-* **OS:** Windows 10/11
-
-### 1. Run in IDE
-1. Clone this repository to your local machine.
-2. Open the project folder in VS Code.
-3. Ensure JavaFX libraries are added to your project's build path.
-4. Run `MainLauncher.java` or `main.java`.
-
----
 <p align="center">Powered by the open-source <a href="https://stockfishchess.org/">Stockfish</a> chess engine for computer move generation and position evaluation.</p>
 
 ---
