@@ -8,6 +8,8 @@ import ui.SidebarView;
 import logic.Chessgame;
 import java.io.File; 
 
+// hi sid
+
 public class main extends Application {
 
     @Override
