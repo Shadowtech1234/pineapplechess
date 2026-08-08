@@ -2,6 +2,13 @@
 
 A custom JavaFX desktop chess game featuring custom asset themes, interactive board UI, and standalone Windows execution.
 
+Showcase Video:
+
+https://github.com/user-attachments/assets/831b4ed4-0aa2-4813-bee9-df7de315c1a2
+
+
+
+
 <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/pineapplemode.png" width="45%"></img> <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/lightmode.png" width="45%"></img> <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/darkmode.png" width="45%"></img> <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/gamemodes.png" width="45%"></img> <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/stockfish.png" width="45%"></img> <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/settings.png" width="45%"></img> 
 
 First 3 pictures showcase the themes available, then the next 3 are just showcasing the UI.
