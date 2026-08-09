@@ -31,6 +31,9 @@ First 3 pictures showcase the themes available, then the next 3 are just showcas
 * **2 Player Mode:** If you have 2 people in front of a computer, you can play against each other on 1 computer! With an optional board flip feature!
 
 ---
+<p align="center">This project is open-source under the MIT License. If you build upon or redistribute this project, please include a brief credit to Theenash Muneeswaran in your project's description, website, or in-game credits!</p>
+
+---
 <p align="center">Powered by the open-source <a href="https://stockfishchess.org/">Stockfish</a> chess engine for computer move generation and position evaluation.</p>
 
 ---
