@@ -1,0 +1,137 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+/* theme variables */
+/* normal */
+body.theme-normal {
+    --bg-main: #ffffff;
+    --bg-sidebar: #dddddd;
+    --text-main: #222222;
+    --btn-bg: #ffffff;
+    --board-light: #F5F5DC; /* BEIGE */
+    --board-dark: #A52A2A;  /* BROWN */
+    --move-even: #FFFFFF;
+    --move-odd: #F2F2F2;
+}
+
+/* Dark Theme[cite: 2, 3] */
+body.theme-dark {
+    --bg-main: #1a1a1a;
+    --bg-sidebar: #222222;
+    --text-main: #ffffff;
+    --btn-bg: #3a3a3a;
+    --board-light: rgb(70, 70, 70);
+    --board-dark: rgb(40, 40, 40);
+    --move-even: #2A2A2A;
+    --move-odd: #1F1F1F;
+}
+
+/* Pineapple Theme[cite: 2, 3] */
+body.theme-pineapple {
+    --bg-main: #fcea9f;
+    --bg-sidebar: #FFDE59;
+    --text-main: #222222;
+    --btn-bg: #fff09d;
+    --board-light: rgb(253, 221, 122);
+    --board-dark: #87d0a5;
+    --move-even: #FFF3C4;
+    --move-odd: #FFEAA7;
+}
+
+/* layout */
+body {
+    background-color: var(--bg-main);
+    color:var(--text-main);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+/* sidebar traslation */
+.sidebar {
+    width: 200px;
+    background-color: var(--bg-sidebar);
+    border-right:1px solid black;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.ui-btn {
+    width: 100%;
+    background-color: var(--btn-bg);
+    color: var(--text-main);
+    border: 1px solid black;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.ui-btn:hover {
+    filter: brightness(0.9);
+}
+
+/* boardview translation */
+.main-content {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    gap: 20px;
+}
+
+.board-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.chessboard {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 80vmin;
+    height: 80vmin;
+    max-width: 640px;
+    max-height: 640px;
+    border: 2px solid var(--text-main);
+}
+
+.square {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.square.light { background-color: var(--board-light); }
+.square.dark { background-color: var(--board-dark); }
+.square.highlight { position: relative; }
+.square.highlight::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 255, 0, 0.3);
+}
+
+.square img {
+    width: 80%;
+    height: 80%;
+    pointer-events: none;
+}
+
+/* Move List */
