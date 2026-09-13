@@ -85,6 +85,7 @@ body {
 }
 
 /* boardview translation */
+
 .main-content {
     flex-grow: 1;
     display: flex;
@@ -134,4 +135,69 @@ body {
     pointer-events: none;
 }
 
+
 /* Move List */
+
+
+.move-list-container {
+    width: 200px;
+    height: 80vmin;
+    max-height: 640px;
+    background-color: var(--bg-main);
+    border-left: 1px solid black;
+    overflow-y: auto;
+}
+
+.move-list {
+    list-style: none;
+}
+
+.move-list li {
+    padding: 8px 12px;
+    font-size: 16px;
+    color: var(--text-main);
+}
+
+.move-list li:nth-child(even) {background-color: var(--move-even);}
+.move-list li:nth-child(odd) { background-color: var(--move-odd); }
+
+
+
+
+/* Overlays & popups */
+.overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.hidden { display: none !important; }
+
+.popup-box {
+    background-color:  var(--bg-main);
+    color: var(--text-main);
+    padding: 20px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    min-width: 300px;
+    border: 2px solid var(--text-main);
+}
+
+/* Specific border override for Pineapple popup[cite: 2] */
+body.theme-pineapple .popup-box {
+    border-color: #F1C40F;
+}
+
+.popup-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
