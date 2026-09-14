@@ -1,26 +1,20 @@
+// state elements]
 const chessboard = document.getElementById('chessboard');
+const overlay = document.getElementById('overlay');
+const popupModal = document.getElementById('popup-modal');
+const body = document.body;
 
-// Generate 8x8 squares dynamically
-function createBoard() {
+let isFlipped = false;
+let usePineapplePieces = true;
+let currentTheme = 'Normal'; // Normal, dark, pineapple
+
+// board gen
+function renderBoard() {
     chessboard.innerHTML = '';
-    for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-            const square = document.createElement('div');
-            const isLight = (row + col) % 2 === 0;
-            
-            square.classList.add('square', isLight ? 'light' : 'dark');
-            square.dataset.row = row;
-            square.dataset.col = col;
 
-            square.addEventListener('click', () => onSquareClick(row, col));
-            chessboard.appendChild(square);
+    for (let uiRow = 0; uiRow < 8; uiRow++) {
+        for (let uiCol = 0; uiCol < 8; uiCol++) {
+            const row = isFlipped ? 7 -uiRow : uiRow;
         }
     }
 }
-
-function onSquareClick(row, col) {
-    console.log(`Clicked square at Row: ${row}, Col: ${col}`);
-}
-
-// Initialize the web board
-createBoard();
