@@ -8,6 +8,48 @@ let isFlipped = false;
 let usePineapplePieces = true;   
 let currentTheme = 'Normal'; // Normal, dark, pineapple
 
+
+// Standard 8x8 initial chess board array
+// 'w' = White, 'b' = Black
+// 'r' = rook, 'n' = knight, 'b' = bishop, 'q' = queen, 'k' = king, 'p' = pawn
+const initialBoardState = [
+    ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
+    ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
+    ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
+];
+
+// active board state tracking
+let boardState = JSON.parse(JSON.stringify(initialBoardState));
+
+// peice image resolver
+function getPieceImageSrc(peiceCode) {
+    if (!peiceCode) return null;
+
+    const color = peiceCode[0] === 'w' ? 'white' : 'black';
+    let type = '';
+
+    switch (peiceCode[1]) {
+        case 'r': type = 'rook'; break;
+        case 'n': type = 'knight'; break;
+        case 'b': type = 'bishop'; break;
+        case 'q': type = 'queen'; break;
+        case 'k': type = 'king'; break;
+        case 'p': type = 'pawn'; break;
+    }
+
+    const folder = usePineapplePieces ? 'pineapple' : 'normal';
+
+
+    // relative path from src/web/index.html to src/resources/
+    return `../resources/${folder}/${color}${type}.png`;
+}
+
+
 // board gen
 function renderBoard() {
     chessboard.innerHTML = '';
@@ -24,20 +66,23 @@ function renderBoard() {
             square.dataset.row = row;
             square.dataset.col = col;
 
+            const pieceCode = boardState[row][col];
+            if (pieceCode) {
+                const img = document.createElement('img');
+                img.src = getPieceImageSrc(pieceCode);
+                img.alt = pieceCode;
 
-            //mock image setup remove later
-            
-            /*
-            if (uiRow == 0) {
-                const img = document.createElementNS('img');
-                const folder = usePineapplePieces ? 'pineapple' : 'normal';
-                img.src = `../../resources/${folder}/blackrook.png`;
+                //fallback for future in case i name the knight as a horse instead
+                img.onerror = () => {
+                    if (pieceCode[1] === 'n') {
+                        const color = pieceCode[0] === 'w' ? 'white' : 'black';
+                        const folder = usePineapplePieces ? 'pineapple' : 'normal';
+                        img.src = `../resources/${folder}/${color}horse.png`;
+                    }
+                };
+
                 square.appendChild(img);
-
             }
-            */
-
-            // end of mock image setup
 
             square.addEventListener('click', () => handleSquareClick(row, col));
             chessboard.appendChild(square);
