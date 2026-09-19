@@ -1,4 +1,6 @@
-// state elements]
+
+
+// state elements
 const chessboard = document.getElementById('chessboard');
 const overlay = document.getElementById('overlay');
 const popupModal = document.getElementById('popup-modal');
@@ -7,6 +9,13 @@ const body = document.body;
 let isFlipped = false;
 let usePineapplePieces = true;   
 let currentTheme = 'Normal'; // Normal, dark, pineapple
+
+
+//selection
+let selectedRow = -1;
+let selectedCol = -1;
+let currentTurn = 'w'; // w = white, b =black, pretty obvi
+
 
 
 // Standard 8x8 initial chess board array
@@ -62,7 +71,8 @@ function renderBoard() {
             const square = document.createElement('div');
             const isLight = (uiRow + uiCol) % 2 ==0;
 
-            square.className = `square ${isLight ? 'light' : 'dark'}`;
+            const isSelected = (row === selectedRow && col === selectedCol);
+            square.className = `square ${isLight ? 'light' : 'dark'} ${isSelected ? 'highlight' : ''}`;
             square.dataset.row = row;
             square.dataset.col = col;
 
@@ -90,8 +100,78 @@ function renderBoard() {
     }
 }
 
+
+// move history
+function recordMoveHistory(piece, startRow, startCol, endRow, endCol) {
+    const moveList = document.getElementById('move-list');
+    if (!moveList) return;
+
+    const cols = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const startPos = `${cols[startCol]}${8 - startRow}`;
+    const endPos = `${cols[endCol]}${8 - endRow}`;
+
+    const li = document.createElement('li');
+    li.textContent = `${piece.toUpperCase()}: ${startPos} → ${endPos}`;
+    moveList.appendChild(li);
+
+    //auto scroll to botoom of list
+    moveList.parentElement.scrollTop = moveList.parentElement.scrollHeight;
+}
+
+
 function handleSquareClick(row, col) {
-    console.log(`Clicked Row: ${row}, Col: ${col}`);
+    const clickedPiece = boardState[row][col];
+
+    //select a puiece if none is selected yet
+    if (selectedRow === -1 && selectedCol === -1) {
+        if (clickedPiece && clickedPiece[0] === currentTurn) {
+            selectedRow = row;
+            selectedCol = col;
+            renderBoard();
+        }
+        return;
+    }
+
+    //if clicking the same piece again ,deselect it
+    if (selectedRow === row && selectedCol === row) {
+        selectedRow = -1;
+        selectedCol = -1;
+        renderBoard();
+        return;
+    }
+
+    //if clicking another piece of the same color, switch selection to that one
+    if (clickedPiece && clickedPiece[0] === currentTurn) {
+        selectedRow = row;
+        selectedCol = col;
+        renderBoard();
+        return;
+    }
+
+    //exectue move
+    const movingPiece = boardState[selectedRow][selectedCol];
+
+    //move piece to target square and clear starting square
+    boardState[row][col] = movingPiece;
+    boardState[selectedRow][selectedCol] = '';
+
+    //record history
+    recordMoveHistory(movingPiece, selectedRow, selectedCol, row, col);
+
+    //reset selection
+    selectedRow = -1;
+    selectedCol = -1;
+
+    //switch turns from sides
+    currentTurn = currentTurn === 'w' ? 'b' : 'w';
+
+    //auto flip baord if 2 player mdoe is on
+    if (isFlipped) {
+
+    }
+
+    renderBoard();
+    
 }
 
 
