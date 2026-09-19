@@ -29,7 +29,7 @@ public class main extends Application {
         Scene scene = new Scene(root, 900, 640);
         primaryStage.setScene(scene);
 
-        // --- STEP 3 CODE GOES HERE ---
+        
         try {
             // 1. Try loading from inside the JAR / Classpath
             var iconStream = getClass().getResourceAsStream("/resources/pineapple/whiteking.png");
@@ -41,7 +41,7 @@ public class main extends Application {
                 primaryStage.getIcons().add(new Image(iconStream));
                 System.out.println("SUCCESS: Loaded icon from classpath!");
             } else {
-                // 2. Direct File Fallback (Works during VS Code testing!)
+                // 2. Direct File Fallback 
                 File iconFile = new File("src/resources/pineapple/whiteking.png");
                 if (iconFile.exists()) {
                     primaryStage.getIcons().add(new Image(iconFile.toURI().toString()));
