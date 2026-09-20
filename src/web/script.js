@@ -11,6 +11,78 @@ let isFlipped = false;
 let usePineapplePieces = true;   
 let currentTheme = 'Normal'; // Normal, dark, pineapple
 
+let vsStockfish = false;
+let stockfishWorker = null;
+
+// stockfish configuration options
+let playerColor = 'w'; // 'w' or 'b'
+let stockfishDepth = 10;
+let stockfishSkillLevel = 10;
+
+// initialize stockfish web worker
+if (window.Worker) {
+    try {
+        stockfishWorker = new Worker(new URL('stockfish-19-asm.js', document.baseURI));
+
+        // initialize UCI protocol
+        stockfishWorker.postMessage('uci');
+        stockfishWorker.postMessage('isready');
+    } catch (error) {
+        console.error('[Stockfish] Failed to start worker:', error);
+    }
+
+    if (stockfishWorker) {
+        // listen for messages/moves returned by stockfish
+        stockfishWorker.onmessage = function (event) {
+            const line = event.data;
+            console.log('[Stockfish Output]:', line);
+
+            if (line.startsWith('bestmove')) {
+                const parts = line.split(' ');
+                const bestMove = parts[1];
+
+                if (bestMove && bestMove !== '(none)') {
+                    const fromSq = bestMove.substring(0, 2);
+                    const toSq = bestMove.substring(2, 4);
+
+                    const success = game.move(fromSq, toSq);
+                    console.log(`Stockfish move ${fromSq}->${toSq} status:`, success);
+
+                    if (success) {
+                        selectedSquare = null;
+                        legalMoves = [];
+                        renderBoard();
+                        renderMoveHistory();
+                    }
+                }
+            }
+        };
+
+        stockfishWorker.onerror = function (event) {
+            console.error('[Stockfish] Worker error:', event.message || event);
+        };
+    }
+}
+
+function makeStockfishMove() {
+    if (!stockfishWorker || !vsStockfish) return;
+
+    // check if it's Stockfish's turn to play
+    const stockfishColor = playerColor === 'w' ? 'b' : 'w';
+    if (game.turn !== stockfishColor) return;
+
+    const currentFen = game.getFen();
+
+    // reset calculation state and apply chosen difficulty skill level
+    stockfishWorker.postMessage('ucinewgame');
+    stockfishWorker.postMessage(`setoption name Skill Level value ${stockfishSkillLevel}`);
+    stockfishWorker.postMessage('isready');
+
+    // send calculation command with chosen depth
+    stockfishWorker.postMessage(`position fen ${currentFen}`);
+    stockfishWorker.postMessage(`go depth ${stockfishDepth}`);
+}
+
 // piece image resolver
 function getPieceImageSrc(pieceCode) {
     if (!pieceCode) return null;
@@ -36,7 +108,10 @@ function getPieceImageSrc(pieceCode) {
 function renderBoard() {
     chessboard.innerHTML = '';
 
-    const shouldFlip = isFlipped && game.turn === 'b';
+    //flip board if player selected black vs stockfish, or if flipped in 2 player mode during blacks turn
+    const shouldFlip = vsStockfish 
+        ? (playerColor === 'b') 
+        : (isFlipped && game.turn === 'b');
 
     for (let uiRow = 0; uiRow < 8; uiRow++) {
         for (let uiCol = 0; uiCol < 8; uiCol++) {
@@ -104,7 +179,6 @@ function renderMoveHistory() {
         li.style.fontFamily = 'monospace';
         li.style.fontSize = '14px';
 
-        // Alternate background color for clean row stripes
         if (moveNum % 2 === 0) {
             li.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
         }
@@ -118,7 +192,6 @@ function renderMoveHistory() {
         moveList.appendChild(li);
     }
 
-    // scrolling
     const container = moveList.parentElement || moveList;
     container.scrollTop = container.scrollHeight;
 }
@@ -127,16 +200,21 @@ let selectedSquare = null;
 let legalMoves = [];
 
 function handleSquareClick(squareName) {
+    //block clicks when it's stockfish's turn
+    const stockfishColor = playerColor === 'w' ? 'b' : 'w';
+    if (vsStockfish && game.turn === stockfishColor) {
+        return;
+    }
+
     const { r, c } = game.squareToCoords(squareName);
 
-    // guard clause: ensure board bounds exist
     if (!game.board[r] || game.board[r][c] === undefined) {
         return;
     }
 
     const clickedPiece = game.board[r][c];
 
-    //no piece is currently selected
+    // no piece selected yet
     if (!selectedSquare) {
         if (clickedPiece && game.isMyPiece(clickedPiece)) {
             selectedSquare = squareName;
@@ -146,7 +224,7 @@ function handleSquareClick(squareName) {
         return;
     }
 
-    //deselect
+    // deselect
     if (selectedSquare === squareName) {
         selectedSquare = null;
         legalMoves = [];
@@ -154,7 +232,7 @@ function handleSquareClick(squareName) {
         return;
     }
 
-    // select antoehr peice
+    // select another piece
     if (clickedPiece && game.isMyPiece(clickedPiece)) {
         selectedSquare = squareName;
         legalMoves = game.getLegalMoves(squareName);
@@ -162,7 +240,7 @@ function handleSquareClick(squareName) {
         return;
     }
 
-    //move/take
+    // make move
     if (legalMoves.includes(squareName)) {
         const fromSquare = selectedSquare;
         const moveSuccessful = game.move(fromSquare, squareName);
@@ -174,7 +252,11 @@ function handleSquareClick(squareName) {
             renderBoard();
             renderMoveHistory();
 
-            //check game-over popups
+            if (vsStockfish && game.turn === stockfishColor && !game.isCheckmate() && !game.isDraw()) {
+                setTimeout(makeStockfishMove, 250);
+            }
+
+            // game-over checks
             setTimeout(() => {
                 if (game.isCheckmate()) {
                     const winner = game.turn === 'w' ? 'Black' : 'White';
@@ -202,7 +284,6 @@ function handleSquareClick(squareName) {
         }
     }
 
-    //reset state if invalid click
     selectedSquare = null;
     legalMoves = [];
     renderBoard();
@@ -220,6 +301,11 @@ function showGameOverPopup(contentHTML) {
             hidePopup();
             renderBoard();
             renderMoveHistory();
+
+            //if playing as Black vs Stockfish, trigger initial move after restart
+            if (vsStockfish && playerColor === 'b') {
+                setTimeout(makeStockfishMove, 250);
+            }
         });
     }
 }
@@ -233,7 +319,7 @@ function hidePopup() {
     overlay.classList.add('hidden');
 }
 
-//settings popup
+// settings popup
 document.getElementById('btn-settings').addEventListener('click', () => {
     const html = `
         <h2 style="font-size: 22px; font-weight: bold;">Settings</h2>
@@ -286,7 +372,7 @@ document.getElementById('btn-settings').addEventListener('click', () => {
     });
 });
 
-//mode select popup
+// mode select popup
 document.getElementById('btn-play').addEventListener('click', () => {
     const html = `
         <h2 style="font-size: 20px; font-weight: bold;">Choose Game Mode</h2>
@@ -297,13 +383,100 @@ document.getElementById('btn-play').addEventListener('click', () => {
     showPopup(html);
 
     document.getElementById('btn-cancel').addEventListener('click', hidePopup);
+    
     document.getElementById('btn-2p').addEventListener('click', () => {
+        vsStockfish = false;
+        playerColor = 'w';
+        selectedSquare = null;
+        legalMoves = [];
+        game.reset();
+        renderBoard();
+        renderMoveHistory();
         hidePopup();
     });
-    document.getElementById('btn-stockfish').addEventListener('click', () => {
-        hidePopup();
-    });
+
+    document.getElementById('btn-stockfish').addEventListener('click', showStockfishSetupModal);
 });
+
+//stockfish setup
+function showStockfishSetupModal() {
+    // Make popup slightly shorter and wider for this modal
+    popupModal.style.width = '360px';
+    popupModal.style.padding = '15px 25px';
+
+    const html = `
+        <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">Stockfish Setup</h2>
+        
+        <div style="display: flex; justify-content: space-around; width: 100%; margin-bottom: 15px;">
+            <div style="text-align: center;">
+                <p style="font-weight: bold; margin-bottom: 6px; font-size: 14px;">Choose difficulty:</p>
+                <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start; font-size: 14px;">
+                    <label style="cursor: pointer;"><input type="radio" name="difficulty" value="easy"> Easy</label>
+                    <label style="cursor: pointer;"><input type="radio" name="difficulty" value="medium" checked> Medium</label>
+                    <label style="cursor: pointer;"><input type="radio" name="difficulty" value="hard"> Hard</label>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <p style="font-weight: bold; margin-bottom: 6px; font-size: 14px;">Choose your side:</p>
+                <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start; font-size: 14px;">
+                    <label style="cursor: pointer;"><input type="radio" name="side" value="w" checked> White</label>
+                    <label style="cursor: pointer;"><input type="radio" name="side" value="b"> Black</label>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button id="btn-start-stockfish" class="ui-btn">Start Game</button>
+            <button id="btn-cancel-stockfish" class="ui-btn">Cancel</button>
+        </div>
+    `;
+
+    showPopup(html);
+
+    // Reset popup styles back to default when closed
+    const resetPopupDimensions = () => {
+        popupModal.style.width = '';
+        popupModal.style.padding = '';
+    };
+
+    document.getElementById('btn-cancel-stockfish').addEventListener('click', () => {
+        resetPopupDimensions();
+        hidePopup();
+    });
+
+    document.getElementById('btn-start-stockfish').addEventListener('click', () => {
+        const difficulty = document.querySelector('input[name="difficulty"]:checked').value;
+        playerColor = document.querySelector('input[name="side"]:checked').value;
+
+        //map UI choices to Stockfish parameters
+        if (difficulty === 'easy') {
+            stockfishDepth = 3;
+            stockfishSkillLevel = 3;
+        } else if (difficulty === 'medium') {
+            stockfishDepth = 8;
+            stockfishSkillLevel = 10;
+        } else if (difficulty === 'hard') {
+            stockfishDepth = 15;
+            stockfishSkillLevel = 20;
+        }
+
+        vsStockfish = true;
+        selectedSquare = null;
+        legalMoves = [];
+        game.reset();
+
+        renderBoard();
+        renderMoveHistory();
+        resetPopupDimensions();
+        hidePopup();
+
+        //if player chose black, stockfish automatically takes the first move as White
+        if (playerColor === 'b') {
+            setTimeout(makeStockfishMove, 300);
+        }
+    });
+}
 
 // initialize
 renderBoard();

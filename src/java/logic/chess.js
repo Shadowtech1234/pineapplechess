@@ -17,6 +17,12 @@ class Chess {
         ];
         this.history = [];
         this.positionHistory = [this.getBoardSnapshot()];
+
+        // Castling rights tracking
+        this.castlingRights = {
+            w: { k: true, q: true },
+            b: { k: true, q: true }
+        };
     }
 
     isMyPiece(piece) {
@@ -125,9 +131,70 @@ class Chess {
                     }
                 }
             }
+
+            // CASTLING MOVES GENERATION
+            const enemyColor = isWhite ? 'b' : 'w';
+            const kingRow = isWhite ? 7 : 0;
+            const rights = this.castlingRights[this.turn];
+
+            // King cannot castle if currently in check
+            if (r === kingRow && c === 4 && !this.isSquareAttacked(r, c, enemyColor)) {
+                // Kingside Castling (O-O)
+                if (rights.k && !this.board[kingRow][5] && !this.board[kingRow][6]) {
+                    if (!this.isSquareAttacked(kingRow, 5, enemyColor) && !this.isSquareAttacked(kingRow, 6, enemyColor)) {
+                        moves.push({ from: { r, c }, to: { r: kingRow, c: 6 }, isCastling: 'k' });
+                    }
+                }
+
+                // Queenside Castling (O-O-O)
+                if (rights.q && !this.board[kingRow][1] && !this.board[kingRow][2] && !this.board[kingRow][3]) {
+                    if (!this.isSquareAttacked(kingRow, 3, enemyColor) && !this.isSquareAttacked(kingRow, 2, enemyColor)) {
+                        moves.push({ from: { r, c }, to: { r: kingRow, c: 2 }, isCastling: 'q' });
+                    }
+                }
+            }
         }
 
         return moves;
+    }
+
+    getFen() {
+        let fen = '';
+
+        for (let r = 0; r < 8; r++) {
+            let emptyCount = 0;
+            for (let c = 0; c < 8; c++) {
+                const piece = this.board[r][c];
+                if (!piece) {
+                    emptyCount++;
+                } else {
+                    if (emptyCount > 0) {
+                        fen += emptyCount;
+                        emptyCount = 0;
+                    }
+                    fen += piece;
+                }
+            }
+            if (emptyCount > 0) {
+                fen += emptyCount;
+            }
+            if (r < 7) {
+                fen += '/';
+            }
+        }
+
+        // Active color
+        fen += ` ${this.turn} `;
+
+        // Format Castling String for FEN (e.g., KQkq)
+        let castlingStr = '';
+        if (this.castlingRights.w.k) castlingStr += 'K';
+        if (this.castlingRights.w.q) castlingStr += 'Q';
+        if (this.castlingRights.b.k) castlingStr += 'k';
+        if (this.castlingRights.b.q) castlingStr += 'q';
+
+        fen += (castlingStr || '-') + ' - 0 ' + (Math.floor(this.history.length / 2) + 1);
+        return fen;
     }
 
     findKing(board, isWhite) {
@@ -141,7 +208,6 @@ class Chess {
     }
 
     isSquareAttacked(row, col, attackerColor) {
-        //pawns
         const pawnDir = attackerColor === 'w' ? 1 : -1;
         const pawnChar = attackerColor === 'w' ? 'P' : 'p';
         for (let dc of [-1, 1]) {
@@ -149,7 +215,6 @@ class Chess {
             if (ar >= 0 && ar < 8 && ac >= 0 && ac < 8 && this.board[ar][ac] === pawnChar) return true;
         }
 
-        //knights
         const knightChar = attackerColor === 'w' ? 'N' : 'n';
         const knightOffsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
         for (let [dr, dc] of knightOffsets) {
@@ -157,7 +222,6 @@ class Chess {
             if (ar >= 0 && ar < 8 && ac >= 0 && ac < 8 && this.board[ar][ac] === knightChar) return true;
         }
 
-        //kings
         const kingChar = attackerColor === 'w' ? 'K' : 'k';
         const kingOffsets = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
         for (let [dr, dc] of kingOffsets) {
@@ -165,7 +229,6 @@ class Chess {
             if (ar >= 0 && ar < 8 && ac >= 0 && ac < 8 && this.board[ar][ac] === kingChar) return true;
         }
 
-        //straight Lines(rook/queen)
         const straightDirs = [[-1,0],[1,0],[0,-1],[0,1]];
         const rookChar = attackerColor === 'w' ? 'R' : 'r';
         const queenChar = attackerColor === 'w' ? 'Q' : 'q';
@@ -181,7 +244,6 @@ class Chess {
             }
         }
 
-        //diagonals(bishop/queen)
         const diagDirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
         const bishopChar = attackerColor === 'w' ? 'B' : 'b';
         for (let [dr, dc] of diagDirs) {
@@ -239,28 +301,28 @@ class Chess {
         return count >= 3;
     }
 
-    getSanNotation(fromSq, toSq) {
-        const from = this.squareToCoords(fromSq);
-        const to = this.squareToCoords(toSq);
-        const piece = this.board[from.r][from.c];
-        const captured = this.board[to.r][to.c];
-        
+    getSanNotation(fromSq, toSq, piece, captured) {
         if (!piece) return `${fromSq}-${toSq}`;
 
         const type = piece.toLowerCase();
+
+        // Check for castling SAN notation
+        if (type === 'k') {
+            if (fromSq === 'e1' && toSq === 'g1') return 'O-O';
+            if (fromSq === 'e1' && toSq === 'c1') return 'O-O-O';
+            if (fromSq === 'e8' && toSq === 'g8') return 'O-O';
+            if (fromSq === 'e8' && toSq === 'c8') return 'O-O-O';
+        }
         
-        //piece letter: knight = 'K', bishop = 'B', rook = 'R', queen = 'Q', king = 'K'
         let pieceLetter = '';
-        if (type === 'n') pieceLetter = 'K'; // Using 'K' for knight as shown in image
+        if (type === 'n') pieceLetter = 'N';
         else if (type === 'b') pieceLetter = 'B';
         else if (type === 'r') pieceLetter = 'R';
         else if (type === 'q') pieceLetter = 'Q';
         else if (type === 'k') pieceLetter = 'K';
 
-        //captures
         const isCapture = captured !== null;
 
-        //pawns
         if (type === 'p') {
             if (isCapture) {
                 return `${fromSq[0]}x${toSq}`;
@@ -268,7 +330,6 @@ class Chess {
             return toSq;
         }
 
-        //other pieces
         return `${pieceLetter}${isCapture ? 'x' : ''}${toSq}`;
     }
 
@@ -276,17 +337,43 @@ class Chess {
         const legalTargets = this.getLegalMoves(fromSq);
         if (!legalTargets.includes(toSq)) return false;
 
-        //generate notation before modifying the board
-        const moveSan = this.getSanNotation(fromSq, toSq);
-
         const from = this.squareToCoords(fromSq);
         const to = this.squareToCoords(toSq);
 
         const movingPiece = this.board[from.r][from.c];
+        const capturedPiece = this.board[to.r][to.c];
+        const type = movingPiece.toLowerCase();
+
+        const moveSan = this.getSanNotation(fromSq, toSq, movingPiece, capturedPiece);
+
+        // Move King
         this.board[to.r][to.c] = movingPiece;
         this.board[from.r][from.c] = null;
 
-        //save SAN notation to move history
+        // Handle Rook relocation during Castling
+        if (type === 'k' && Math.abs(from.c - to.c) === 2) {
+            if (to.c === 6) { // Kingside
+                const rook = this.board[from.r][7];
+                this.board[from.r][5] = rook;
+                this.board[from.r][7] = null;
+            } else if (to.c === 2) { // Queenside
+                const rook = this.board[from.r][0];
+                this.board[from.r][3] = rook;
+                this.board[from.r][0] = null;
+            }
+        }
+
+        // Update Castling Rights
+        if (type === 'k') {
+            this.castlingRights[this.turn].k = false;
+            this.castlingRights[this.turn].q = false;
+        } else if (type === 'r') {
+            if (from.r === 7 && from.c === 0) this.castlingRights.w.q = false;
+            if (from.r === 7 && from.c === 7) this.castlingRights.w.k = false;
+            if (from.r === 0 && from.c === 0) this.castlingRights.b.q = false;
+            if (from.r === 0 && from.c === 7) this.castlingRights.b.k = false;
+        }
+
         this.history.push(moveSan);
 
         this.turn = this.turn === 'w' ? 'b' : 'w';
