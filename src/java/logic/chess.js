@@ -27,7 +27,9 @@ class Chess {
     //helper function to check if this peice belongs to a player
     isMyPiece(piece) {
         if (!piece) return false;
-        return this.turn === 'w' ? piece.toUpperCase() : piece === piece.toLowerCase();
+        return this.turn === 'w' 
+            ? piece === piece.toUpperCase() 
+            : piece === piece.toLowerCase();
     }
 
     
@@ -146,7 +148,7 @@ class Chess {
                 const nr = r + dr, nc = c + dc;
                 if(nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
                     const target = this.board[nr][nc];
-                    if (!target || (isWhite ? target === target.toLowerCase() : target.toUpperCase())) {
+                    if (!target || (isWhite ? target === target.toLowerCase() : target === target.toUpperCase())) {
                         moves.push({ from: {r, c}, to: {r: nr, c: nc} });
                     }
                 }
@@ -158,6 +160,115 @@ class Chess {
     }
 
 
+    isSquareAttacked(row, col, attackerColor) {
+        // check Pawn attacks
+        const pawnDir = attackerColor === 'w' ? 1 : -1; // Direction attacker pawns come from
+        const pawnChar = attackerColor === 'w' ? 'P' : 'p';
+        for (let dc of [-1, 1]) {
+            const ar = row + pawnDir;
+            const ac = col + dc;
+            if (ar >= 0 && ar < 8 && ac >= 0 && ac < 8) {
+                if (this.board[ar][ac] === pawnChar) return true;
+            }
+        }
+
+        // check knight attacks
+        const knightChar = attackerColor === 'w' ? 'N' : 'n';
+        const knightOffsets = [
+            [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+            [1, -2],  [1, 2],  [2, -1],  [2, 1]
+        ];
+        for (let [dr, dc] of knightOffsets) {
+            const ar = row + dr;
+            const ac = col + dc;
+            if (ar >= 0 && ar < 8 && ac >= 0 && ac < 8) {
+                if (this.board[ar][ac] === knightChar) return true;
+            }
+        }
+
+        // check king attacks
+        const kingChar = attackerColor === 'w' ? 'K' : 'k';
+        const kingOffsets = [
+            [-1,-1], [-1,0], [-1,1],
+            [ 0,-1],         [ 0,1],
+            [ 1,-1], [ 1,0], [ 1,1]
+        ];
+        for (let [dr, dc] of kingOffsets) {
+            const ar = row + dr;
+            const ac = col + dc;
+            if (ar >= 0 && ar < 8 && ac >= 0 && ac < 8) {
+                if (this.board[ar][ac] === kingChar) return true;
+            }
+        }
+
+        // check straights (rook and queen)
+        const straightDirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+        const rookChar = attackerColor === 'w' ? 'R' : 'r';
+        const queenChar = attackerColor === 'w' ? 'Q' : 'q';
+        for (let [dr, dc] of straightDirs) {
+            let ar = row + dr;
+            let ac = col + dc;
+            while (ar >= 0 && ar < 8 && ac >= 0 && ac < 8) {
+                const p = this.board[ar][ac];
+                if (p) {
+                    if (p === rookChar || p === queenChar) return true;
+                    break; // blocked by another piece
+                }
+                ar += dr;
+                ac += dc;
+            }
+        }
+
+        // 5. check diagonals(bishops/queens)
+        const diagDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+        const bishopChar = attackerColor === 'w' ? 'B' : 'b';
+        for (let [dr, dc] of diagDirs) {
+            let ar = row + dr;
+            let ac = col + dc;
+            while (ar >= 0 && ar < 8 && ac >= 0 && ac < 8) {
+                const p = this.board[ar][ac];
+                if (p) {
+                    if (p === bishopChar || p === queenChar) return true;
+                    break; // Blocked by another piece
+                }
+                ar += dr;
+                ac += dc;
+            }
+        }
+
+        return false;
+    }
+
+    getLegalMoves(squareName) {
+        const { r, c } = this.squareToCoords(squareName);
+        const candidates = this.getPieceMoves(r, c);
+        const legalMoves = [];
+
+        const isWhite = this.turn === 'w';
+        const enemyColor = isWhite ? 'b' : 'w';
+
+        for (let move of candidates) {
+            // simulate move
+            const captured = this.board[move.to.r][move.to.c];
+            this.board[move.to.r][move.to.c] = this.board[move.from.r][move.from.c];
+            this.board[move.from.r][move.from.c] = null;
+
+            // locate King
+            const kingPos = this.findKing(this.board, isWhite);
+
+            // verify king is safe after move
+            if (kingPos && !this.isSquareAttacked(kingPos.r, kingPos.c, enemyColor)) {
+                legalMoves.push(this.coordsToSquare(move.to.r, move.to.c));
+            }
+
+            // revert move
+            this.board[move.from.r][move.from.c] = this.board[move.to.r][move.to.c];
+            this.board[move.to.r][move.to.c] = captured;
+        }
+
+        return legalMoves;
+    }
+
     // find kind position for active player
     findKing(board, isWhite) {
         const targetKing = isWhite ? 'K' : 'k';
@@ -167,58 +278,6 @@ class Chess {
             }
         }
         return null;
-    }
-
-    isSquareAttacked(row, col, byWhite) {
-        const directions = {
-            rook: [[-1, 0], [1, 0], [0, -1], [0, 1]],
-            bishop: [[-1, -1], [-1, 1], [1, -1], [1, 1]]
-        };
-
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                const piece = this.board[r][c];
-                if (!piece || (piece === piece.toUpperCase()) !== byWhite) continue;
-
-                const type = piece.toLowerCase();
-                const rowDistance = row - r;
-                const colDistance = col - c;
-
-                if (type === 'p' && colDistance * colDistance === 1 && rowDistance === (byWhite ? -1 : 1)) {
-                    return true;
-                }
-
-                if (type === 'n' && [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]
-                    .some(([dr, dc]) => rowDistance === dr && colDistance === dc)) {
-                    return true;
-                }
-
-                if (type === 'k' && Math.max(Math.abs(rowDistance), Math.abs(colDistance)) === 1) {
-                    return true;
-                }
-
-                const directionsToCheck = type === 'r'
-                    ? directions.rook
-                    : type === 'b'
-                        ? directions.bishop
-                        : type === 'q'
-                            ? [...directions.rook, ...directions.bishop]
-                            : [];
-
-                for (const [dr, dc] of directionsToCheck) {
-                    let checkRow = r + dr;
-                    let checkCol = c + dc;
-                    while (checkRow >= 0 && checkRow < 8 && checkCol >= 0 && checkCol < 8) {
-                        if (checkRow === row && checkCol === col) return true;
-                        if (this.board[checkRow][checkCol]) break;
-                        checkRow += dr;
-                        checkCol += dc;
-                    }
-                }
-            }
-        }
-
-        return false;
     }
 
 

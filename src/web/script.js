@@ -132,62 +132,7 @@ function recordMoveHistory(piece, startRow, startCol, endRow, endCol) {
     moveList.parentElement.scrollTop = moveList.parentElement.scrollHeight;
 }
 
-/*
-function handleSquareClick(row, col) {
-    const clickedPiece = boardState[row][col];
 
-    //select a puiece if none is selected yet
-    if (selectedRow === -1 && selectedCol === -1) {
-        if (clickedPiece && clickedPiece[0] === currentTurn) {
-            selectedRow = row;
-            selectedCol = col;
-            renderBoard();
-        }
-        return;
-    }
-
-    //if clicking the same piece again ,deselect it
-    if (selectedRow === row && selectedCol === row) {
-        selectedRow = -1;
-        selectedCol = -1;
-        renderBoard();
-        return;
-    }
-
-    //if clicking another piece of the same color, switch selection to that one
-    if (clickedPiece && clickedPiece[0] === currentTurn) {
-        selectedRow = row;
-        selectedCol = col;
-        renderBoard();
-        return;
-    }
-
-    //exectue move
-    const movingPiece = boardState[selectedRow][selectedCol];
-
-    //move piece to target square and clear starting square
-    boardState[row][col] = movingPiece;
-    boardState[selectedRow][selectedCol] = '';
-
-    //record history
-    recordMoveHistory(movingPiece, selectedRow, selectedCol, row, col);
-
-    //reset selection
-    selectedRow = -1;
-    selectedCol = -1;
-
-    //switch turns from sides
-    currentTurn = currentTurn === 'w' ? 'b' : 'w';
-
-    //auto flip baord if 2 player mdoe is on
-    if (isFlipped) {
-
-    }
-
-    renderBoard();
-    
-}
-    */
 
 let selectedSquare = null;
 let legalMoves = [];
@@ -195,15 +140,13 @@ let legalMoves = [];
 function handleSquareClick(squareName) {
     const { r, c } = game.squareToCoords(squareName);
 
-    // guard clause to ensure board row and column exist before proceeding
     if (!game.board[r] || game.board[r][c] === undefined) {
-        console.error(`Invalid square access attempt at row: ${r}, col: ${c} for square: ${squareName}`);
         return;
     }
 
     const piece = game.board[r][c];
 
-    //selection logic
+    //first selection
     if (!selectedSquare) {
         if (piece && game.isMyPiece(piece)) {
             selectedSquare = squareName;
@@ -213,7 +156,7 @@ function handleSquareClick(squareName) {
         return;
     }
 
-    // deselect if clicking same square
+    // deselect
     if (selectedSquare === squareName) {
         selectedSquare = null;
         legalMoves = [];
@@ -221,7 +164,7 @@ function handleSquareClick(squareName) {
         return;
     }
 
-    // switch active selection if clicking another piece of the same turn
+    // switch to another piece of active turn
     if (piece && game.isMyPiece(piece)) {
         selectedSquare = squareName;
         legalMoves = game.getLegalMoves(squareName);
@@ -229,15 +172,21 @@ function handleSquareClick(squareName) {
         return;
     }
 
-    // execute move attempt
+    // attempt capture or move
     const moveSuccessful = game.move(selectedSquare, squareName);
 
     if (moveSuccessful) {
+        const moveText = game.history[game.history.length - 1];
+        const moveList = document.getElementById('move-list');
+        if (moveList) {
+            const li = document.createElement('li');
+            li.textContent = `${game.turn === 'b' ? 'W' : 'B'}: ${moveText}`;
+            moveList.appendChild(li);
+        }
+
         selectedSquare = null;
         legalMoves = [];
         renderBoard();
-    } else {
-        console.log("Illegal move attempted!");
     }
 }
 
