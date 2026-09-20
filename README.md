@@ -1,6 +1,7 @@
 # Pineapple Chess
+Pineapple Chess is now availbe to download or playable in your browser!
 
-A custom JavaFX desktop chess game featuring custom asset themes, interactive board UI, and standalone Windows execution.
+A custom chess game themed PINEAPPLES!
 
 Showcase Video:
 
@@ -15,7 +16,7 @@ First 3 pictures showcase the themes available, then the next 3 are just showcas
 ---
 
 ##  Quick Start
-
+This is for the downloadable, for the web, just click the link in the About section.
 1. Download the latest installer **`PineappleChess-1.0.0.exe`** from the Releases section.
 2. Double-click to run the setup wizard and follow the prompts.
 3. Launch **Pineapple Chess** directly from your Desktop or Start Menu!
@@ -26,7 +27,8 @@ First 3 pictures showcase the themes available, then the next 3 are just showcas
 
 * **Custom Pineapple Visual Theme:** Features pineapple themed chess pieces alongside classic piece sets.
 * **Interactive UI & Sidebar:** Displays move history, Stockfish game config, and settings to easily switch themes.
-* **Standalone Execution:** Built as a native Windows installer (`.exe`) with bundled JavaFX runtime components, no system JDK required.
+* **Standalone Execution for downloadable:** Built as a native Windows installer (`.exe`) with bundled JavaFX runtime components, no system JDK required.
+* **Available on the Web:** You can now play on your browser.
 * **Play against Bots:** Powered by Stockfish, you can play against bots with varying difficulties.
 * **2 Player Mode:** If you have 2 people in front of a computer, you can play against each other on 1 computer! With an optional board flip feature!
 
