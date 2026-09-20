@@ -201,3 +201,12 @@ body.theme-pineapple .popup-box {
     align-items: center;
 }
 
+.square.legal-target::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background-color: rgba(0, 200, 0, 0.6);
+    border-radius: 50%;
+}
+

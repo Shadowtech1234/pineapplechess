@@ -1,5 +1,11 @@
 
 
+
+//initialize game eninge
+const game = new Chess();
+
+
+
 // state elements
 const chessboard = document.getElementById('chessboard');
 const overlay = document.getElementById('overlay');
@@ -68,15 +74,23 @@ function renderBoard() {
             const row = isFlipped ? 7 -uiRow : uiRow;
             const col = isFlipped ? 7 - uiCol : uiCol;
 
+            //convert row/col numbers to notation
+            const squareName = String.fromCharCode(97 + col) + (8 - row);
+
             const square = document.createElement('div');
             const isLight = (uiRow + uiCol) % 2 ==0;
 
             const isSelected = (row === selectedRow && col === selectedCol);
-            square.className = `square ${isLight ? 'light' : 'dark'} ${isSelected ? 'highlight' : ''}`;
-            square.dataset.row = row;
-            square.dataset.col = col;
+            const isLegalTarget = legalMoves.includes(squareName);
 
-            const pieceCode = boardState[row][col];
+            square.className = `square ${isLight ? 'light' : 'dark'} ${isSelected ? 'highlight' : ''} ${isLegalTarget ? 'legal-target' : ''}`;
+            square.dataset.square = squareName;
+
+            //get piece code from the chess engine's board array
+            const enginePiece = game.board[row][col];
+            const pieceCode = enginePiece
+                ? `${enginePiece === enginePiece.toUpperCase() ? 'w' : 'b'}${enginePiece.toLowerCase()}`
+                : '';
             if (pieceCode) {
                 const img = document.createElement('img');
                 img.src = getPieceImageSrc(pieceCode);
@@ -94,7 +108,7 @@ function renderBoard() {
                 square.appendChild(img);
             }
 
-            square.addEventListener('click', () => handleSquareClick(row, col));
+            square.addEventListener('click', () => handleSquareClick(squareName));
             chessboard.appendChild(square);
         }
     }
@@ -118,7 +132,7 @@ function recordMoveHistory(piece, startRow, startCol, endRow, endCol) {
     moveList.parentElement.scrollTop = moveList.parentElement.scrollHeight;
 }
 
-
+/*
 function handleSquareClick(row, col) {
     const clickedPiece = boardState[row][col];
 
@@ -172,6 +186,59 @@ function handleSquareClick(row, col) {
 
     renderBoard();
     
+}
+    */
+
+let selectedSquare = null;
+let legalMoves = [];
+
+function handleSquareClick(squareName) {
+    const { r, c } = game.squareToCoords(squareName);
+
+    // guard clause to ensure board row and column exist before proceeding
+    if (!game.board[r] || game.board[r][c] === undefined) {
+        console.error(`Invalid square access attempt at row: ${r}, col: ${c} for square: ${squareName}`);
+        return;
+    }
+
+    const piece = game.board[r][c];
+
+    //selection logic
+    if (!selectedSquare) {
+        if (piece && game.isMyPiece(piece)) {
+            selectedSquare = squareName;
+            legalMoves = game.getLegalMoves(squareName);
+            renderBoard();
+        }
+        return;
+    }
+
+    // deselect if clicking same square
+    if (selectedSquare === squareName) {
+        selectedSquare = null;
+        legalMoves = [];
+        renderBoard();
+        return;
+    }
+
+    // switch active selection if clicking another piece of the same turn
+    if (piece && game.isMyPiece(piece)) {
+        selectedSquare = squareName;
+        legalMoves = game.getLegalMoves(squareName);
+        renderBoard();
+        return;
+    }
+
+    // execute move attempt
+    const moveSuccessful = game.move(selectedSquare, squareName);
+
+    if (moveSuccessful) {
+        selectedSquare = null;
+        legalMoves = [];
+        renderBoard();
+    } else {
+        console.log("Illegal move attempted!");
+    }
 }
 
 
