@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pineapple Chess</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<!-- normal theme-->
+<body class="theme-normal">
+    
+    <div class="app-container">
+        <!-- replaces sidebarview -->
+        <aside class="sidebar">
+            <button id="btn-play" class="ui-btn">Play</button>
+            <button id="btn-settings" class="ui-btn">Settings</button>
+        </aside>
+
+        <!-- replaces boardview yayayyayaya-->
+        <main class="main-content">
+            <div class="board-wrapper">
+                <div id="chessboard" class="chessboard">
+                    
+                </div>
+            </div>
+
+            <!-- Move History List yyyyyyyyyyyyyayayayayayyayya-->
+            <div class="move-list-container">
+                <ul id="move-list" class="move-list">
+                   
+                </ul>
+            </div>
+        </main>
+    </div>
+
+    <!-- new overlay and popups :) -->
+    <div id="overlay" class="overlay hidden">
+        <div id="popup-modal" class="popup-box">
+         
+        </div>
+    </div>
+
+    <!-- load chess.js(game engine) -->
+    <script src="../java/logic/chess.js"></script>
+
+    <!-- load ui scipt -->
+    <script src="script.js"></script>
+</body>
+</html>
