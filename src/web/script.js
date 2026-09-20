@@ -71,32 +71,33 @@ function renderBoard() {
 
     for (let uiRow = 0; uiRow < 8; uiRow++) {
         for (let uiCol = 0; uiCol < 8; uiCol++) {
-            const row = isFlipped ? 7 -uiRow : uiRow;
+            const row = isFlipped ? 7 - uiRow : uiRow;
             const col = isFlipped ? 7 - uiCol : uiCol;
 
-            //convert row/col numbers to notation
+            // Convert row/col numbers to square notation (e.g., 'e2')
             const squareName = String.fromCharCode(97 + col) + (8 - row);
 
             const square = document.createElement('div');
-            const isLight = (uiRow + uiCol) % 2 ==0;
+            const isLight = (uiRow + uiCol) % 2 === 0;
 
-            const isSelected = (row === selectedRow && col === selectedCol);
+            //  Compare algebraic square names directly
+            const isSelected = (squareName === selectedSquare);
             const isLegalTarget = legalMoves.includes(squareName);
 
             square.className = `square ${isLight ? 'light' : 'dark'} ${isSelected ? 'highlight' : ''} ${isLegalTarget ? 'legal-target' : ''}`;
             square.dataset.square = squareName;
 
-            //get piece code from the chess engine's board array
+            // Get piece code from the chess engines board array
             const enginePiece = game.board[row][col];
             const pieceCode = enginePiece
                 ? `${enginePiece === enginePiece.toUpperCase() ? 'w' : 'b'}${enginePiece.toLowerCase()}`
                 : '';
+
             if (pieceCode) {
                 const img = document.createElement('img');
                 img.src = getPieceImageSrc(pieceCode);
                 img.alt = pieceCode;
 
-                //fallback for future in case i name the knight as a horse instead
                 img.onerror = () => {
                     if (pieceCode[1] === 'n') {
                         const color = pieceCode[0] === 'w' ? 'white' : 'black';
@@ -140,15 +141,17 @@ let legalMoves = [];
 function handleSquareClick(squareName) {
     const { r, c } = game.squareToCoords(squareName);
 
+    // Guard clause: ensure board bounds exist
     if (!game.board[r] || game.board[r][c] === undefined) {
         return;
     }
 
-    const piece = game.board[r][c];
+    const clickedPiece = game.board[r][c];
 
-    //first selection
+    // no piece is currently selected
     if (!selectedSquare) {
-        if (piece && game.isMyPiece(piece)) {
+        // Only allow selecting a piece that belongs to the CURRENT active turn
+        if (clickedPiece && game.isMyPiece(clickedPiece)) {
             selectedSquare = squareName;
             legalMoves = game.getLegalMoves(squareName);
             renderBoard();
@@ -156,7 +159,7 @@ function handleSquareClick(squareName) {
         return;
     }
 
-    // deselect
+    //deslect
     if (selectedSquare === squareName) {
         selectedSquare = null;
         legalMoves = [];
@@ -164,30 +167,46 @@ function handleSquareClick(squareName) {
         return;
     }
 
-    // switch to another piece of active turn
-    if (piece && game.isMyPiece(piece)) {
+    //clicking antoehr peice
+    if (clickedPiece && game.isMyPiece(clickedPiece)) {
         selectedSquare = squareName;
         legalMoves = game.getLegalMoves(squareName);
         renderBoard();
         return;
     }
 
-    // attempt capture or move
-    const moveSuccessful = game.move(selectedSquare, squareName);
+    //move/capture
+    if (legalMoves.includes(squareName)) {
+        const fromSquare = selectedSquare;
+        const moveSuccessful = game.move(fromSquare, squareName);
 
-    if (moveSuccessful) {
-        const moveText = game.history[game.history.length - 1];
-        const moveList = document.getElementById('move-list');
-        if (moveList) {
-            const li = document.createElement('li');
-            li.textContent = `${game.turn === 'b' ? 'W' : 'B'}: ${moveText}`;
-            moveList.appendChild(li);
+        if (moveSuccessful) {
+            // 1. Immediately wipe selection variables to prevent turn-desync
+            selectedSquare = null;
+            legalMoves = [];
+
+            // 2. Log history entry
+            const moveList = document.getElementById('move-list');
+            if (moveList && game.history.length > 0) {
+                const lastMove = game.history[game.history.length - 1];
+                const li = document.createElement('li');
+                // Previous turn made the move, so display who moved
+                const movedColor = game.turn === 'w' ? 'Black' : 'White';
+                li.textContent = `${movedColor}: ${lastMove}`;
+                moveList.appendChild(li);
+                moveList.parentElement.scrollTop = moveList.parentElement.scrollHeight;
+            }
+
+            // 3. Re-render updated board state
+            renderBoard();
+            return;
         }
-
-        selectedSquare = null;
-        legalMoves = [];
-        renderBoard();
     }
+
+    // If click was neither a legal target nor a piece switch, reset selection safely
+    selectedSquare = null;
+    legalMoves = [];
+    renderBoard();
 }
 
 
