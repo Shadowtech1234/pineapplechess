@@ -101,7 +101,7 @@ function getPieceImageSrc(pieceCode) {
 
     const folder = usePineapplePieces ? 'pineapple' : 'normal';
 
-    return `../resources/${folder}/${color}${type}.png`;
+    return `resources/${folder}/${color}${type}.png`;
 }
 
 // board gen
@@ -144,6 +144,8 @@ function renderBoard() {
                 img.style.pointerEvents = 'none';
 
                 img.onerror = () => {
+                    img.onerror = null;
+                    
                     if (pieceCode[1] === 'n') {
                         const color = pieceCode[0] === 'w' ? 'white' : 'black';
                         const folder = usePineapplePieces ? 'pineapple' : 'normal';
