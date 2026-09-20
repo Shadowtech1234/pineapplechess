@@ -16,9 +16,9 @@ class Chess {
             ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
         ];
         this.history = [];
+        this.positionHistory = [this.getBoardSnapshot()];
     }
 
-    // Safely check piece ownership without null crashes
     isMyPiece(piece) {
         if (!piece || typeof piece !== 'string') return false;
         return this.turn === 'w' 
@@ -49,7 +49,6 @@ class Chess {
         const type = piece.toLowerCase();
         const isWhite = piece === piece.toUpperCase();
 
-        // Helper check for enemy pieces
         const isEnemy = (target) => {
             if (!target) return false;
             return isWhite ? target === target.toLowerCase() : target === target.toUpperCase();
@@ -142,7 +141,7 @@ class Chess {
     }
 
     isSquareAttacked(row, col, attackerColor) {
-        // Pawns
+        //pawns
         const pawnDir = attackerColor === 'w' ? 1 : -1;
         const pawnChar = attackerColor === 'w' ? 'P' : 'p';
         for (let dc of [-1, 1]) {
@@ -150,7 +149,7 @@ class Chess {
             if (ar >= 0 && ar < 8 && ac >= 0 && ac < 8 && this.board[ar][ac] === pawnChar) return true;
         }
 
-        // Knights
+        //knights
         const knightChar = attackerColor === 'w' ? 'N' : 'n';
         const knightOffsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
         for (let [dr, dc] of knightOffsets) {
@@ -158,7 +157,7 @@ class Chess {
             if (ar >= 0 && ar < 8 && ac >= 0 && ac < 8 && this.board[ar][ac] === knightChar) return true;
         }
 
-        // Kings
+        //kings
         const kingChar = attackerColor === 'w' ? 'K' : 'k';
         const kingOffsets = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
         for (let [dr, dc] of kingOffsets) {
@@ -166,7 +165,7 @@ class Chess {
             if (ar >= 0 && ar < 8 && ac >= 0 && ac < 8 && this.board[ar][ac] === kingChar) return true;
         }
 
-        // Straight Lines (Rook/Queen)
+        //straight Lines(rook/queen)
         const straightDirs = [[-1,0],[1,0],[0,-1],[0,1]];
         const rookChar = attackerColor === 'w' ? 'R' : 'r';
         const queenChar = attackerColor === 'w' ? 'Q' : 'q';
@@ -182,7 +181,7 @@ class Chess {
             }
         }
 
-        // Diagonals (Bishop/Queen)
+        //diagonals(bishop/queen)
         const diagDirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
         const bishopChar = attackerColor === 'w' ? 'B' : 'b';
         for (let [dr, dc] of diagDirs) {
@@ -225,9 +224,60 @@ class Chess {
         return legalMoves;
     }
 
+    getBoardSnapshot() {
+        return JSON.stringify(this.board) + '|' + this.turn;
+    }
+
+    isThreefoldRepetition() {
+        const currentSnapshot = this.getBoardSnapshot();
+        let count = 0;
+        for (const snapshot of this.positionHistory) {
+            if (snapshot === currentSnapshot) {
+                count++;
+            }
+        }
+        return count >= 3;
+    }
+
+    getSanNotation(fromSq, toSq) {
+        const from = this.squareToCoords(fromSq);
+        const to = this.squareToCoords(toSq);
+        const piece = this.board[from.r][from.c];
+        const captured = this.board[to.r][to.c];
+        
+        if (!piece) return `${fromSq}-${toSq}`;
+
+        const type = piece.toLowerCase();
+        
+        //piece letter: knight = 'K', bishop = 'B', rook = 'R', queen = 'Q', king = 'K'
+        let pieceLetter = '';
+        if (type === 'n') pieceLetter = 'K'; // Using 'K' for knight as shown in image
+        else if (type === 'b') pieceLetter = 'B';
+        else if (type === 'r') pieceLetter = 'R';
+        else if (type === 'q') pieceLetter = 'Q';
+        else if (type === 'k') pieceLetter = 'K';
+
+        //captures
+        const isCapture = captured !== null;
+
+        //pawns
+        if (type === 'p') {
+            if (isCapture) {
+                return `${fromSq[0]}x${toSq}`;
+            }
+            return toSq;
+        }
+
+        //other pieces
+        return `${pieceLetter}${isCapture ? 'x' : ''}${toSq}`;
+    }
+
     move(fromSq, toSq) {
         const legalTargets = this.getLegalMoves(fromSq);
         if (!legalTargets.includes(toSq)) return false;
+
+        //generate notation before modifying the board
+        const moveSan = this.getSanNotation(fromSq, toSq);
 
         const from = this.squareToCoords(fromSq);
         const to = this.squareToCoords(toSq);
@@ -236,8 +286,44 @@ class Chess {
         this.board[to.r][to.c] = movingPiece;
         this.board[from.r][from.c] = null;
 
-        this.history.push(`${fromSq}-${toSq}`);
+        //save SAN notation to move history
+        this.history.push(moveSan);
+
         this.turn = this.turn === 'w' ? 'b' : 'w';
+        this.positionHistory.push(this.getBoardSnapshot());
+
         return true;
+    }
+
+    hasLegalMoves() {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const piece = this.board[r][c];
+                if (piece && this.isMyPiece(piece)) {
+                    const squareName = this.coordsToSquare(r, c);
+                    const moves = this.getLegalMoves(squareName);
+                    if (moves.length > 0) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    isCheckmate() {
+        const isWhite = this.turn === 'w';
+        const kingPos = this.findKing(this.board, isWhite);
+        const enemyColor = isWhite ? 'b' : 'w';
+        
+        const inCheck = kingPos && this.isSquareAttacked(kingPos.r, kingPos.c, enemyColor);
+        return inCheck && !this.hasLegalMoves();
+    }
+
+    isDraw() {
+        const isWhite = this.turn === 'w';
+        const kingPos = this.findKing(this.board, isWhite);
+        const enemyColor = isWhite ? 'b' : 'w';
+
+        const inCheck = kingPos && this.isSquareAttacked(kingPos.r, kingPos.c, enemyColor);
+        return !inCheck && !this.hasLegalMoves();
     }
 }

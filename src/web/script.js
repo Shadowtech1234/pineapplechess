@@ -1,10 +1,5 @@
-
-
-
-//initialize game eninge
+// initialize game engine
 const game = new Chess();
-
-
 
 // state elements
 const chessboard = document.getElementById('chessboard');
@@ -16,39 +11,14 @@ let isFlipped = false;
 let usePineapplePieces = true;   
 let currentTheme = 'Normal'; // Normal, dark, pineapple
 
+// piece image resolver
+function getPieceImageSrc(pieceCode) {
+    if (!pieceCode) return null;
 
-//selection
-let selectedRow = -1;
-let selectedCol = -1;
-let currentTurn = 'w'; // w = white, b =black, pretty obvi
-
-
-
-// Standard 8x8 initial chess board array
-// 'w' = White, 'b' = Black
-// 'r' = rook, 'n' = knight, 'b' = bishop, 'q' = queen, 'k' = king, 'p' = pawn
-const initialBoardState = [
-    ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
-    ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
-    ['', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', ''],
-    ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
-    ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
-];
-
-// active board state tracking
-let boardState = JSON.parse(JSON.stringify(initialBoardState));
-
-// peice image resolver
-function getPieceImageSrc(peiceCode) {
-    if (!peiceCode) return null;
-
-    const color = peiceCode[0] === 'w' ? 'white' : 'black';
+    const color = pieceCode[0] === 'w' ? 'white' : 'black';
     let type = '';
 
-    switch (peiceCode[1]) {
+    switch (pieceCode[1]) {
         case 'r': type = 'rook'; break;
         case 'n': type = 'knight'; break;
         case 'b': type = 'bishop'; break;
@@ -59,20 +29,19 @@ function getPieceImageSrc(peiceCode) {
 
     const folder = usePineapplePieces ? 'pineapple' : 'normal';
 
-
-    // relative path from src/web/index.html to src/resources/
     return `../resources/${folder}/${color}${type}.png`;
 }
-
 
 // board gen
 function renderBoard() {
     chessboard.innerHTML = '';
 
+    const shouldFlip = isFlipped && game.turn === 'b';
+
     for (let uiRow = 0; uiRow < 8; uiRow++) {
         for (let uiCol = 0; uiCol < 8; uiCol++) {
-            const row = isFlipped ? 7 - uiRow : uiRow;
-            const col = isFlipped ? 7 - uiCol : uiCol;
+            const row = shouldFlip ? 7 - uiRow : uiRow;
+            const col = shouldFlip ? 7 - uiCol : uiCol;
 
             // Convert row/col numbers to square notation (e.g., 'e2')
             const squareName = String.fromCharCode(97 + col) + (8 - row);
@@ -80,14 +49,14 @@ function renderBoard() {
             const square = document.createElement('div');
             const isLight = (uiRow + uiCol) % 2 === 0;
 
-            //  Compare algebraic square names directly
+            // compare algebraic square names directly
             const isSelected = (squareName === selectedSquare);
             const isLegalTarget = legalMoves.includes(squareName);
 
             square.className = `square ${isLight ? 'light' : 'dark'} ${isSelected ? 'highlight' : ''} ${isLegalTarget ? 'legal-target' : ''}`;
             square.dataset.square = squareName;
 
-            // Get piece code from the chess engines board array
+            // get piece code from the chess engine board array
             const enginePiece = game.board[row][col];
             const pieceCode = enginePiece
                 ? `${enginePiece === enginePiece.toUpperCase() ? 'w' : 'b'}${enginePiece.toLowerCase()}`
@@ -97,6 +66,7 @@ function renderBoard() {
                 const img = document.createElement('img');
                 img.src = getPieceImageSrc(pieceCode);
                 img.alt = pieceCode;
+                img.style.pointerEvents = 'none';
 
                 img.onerror = () => {
                     if (pieceCode[1] === 'n') {
@@ -115,25 +85,43 @@ function renderBoard() {
     }
 }
 
-
-// move history
-function recordMoveHistory(piece, startRow, startCol, endRow, endCol) {
+function renderMoveHistory() {
     const moveList = document.getElementById('move-list');
     if (!moveList) return;
 
-    const cols = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-    const startPos = `${cols[startCol]}${8 - startRow}`;
-    const endPos = `${cols[endCol]}${8 - endRow}`;
+    moveList.innerHTML = '';
 
-    const li = document.createElement('li');
-    li.textContent = `${piece.toUpperCase()}: ${startPos} → ${endPos}`;
-    moveList.appendChild(li);
+    for (let i = 0; i < game.history.length; i += 2) {
+        const moveNum = Math.floor(i / 2) + 1;
+        const whiteMove = game.history[i] || '';
+        const blackMove = game.history[i + 1] || '';
 
-    //auto scroll to botoom of list
-    moveList.parentElement.scrollTop = moveList.parentElement.scrollHeight;
+        const li = document.createElement('li');
+        li.style.display = 'flex';
+        li.style.justifyContent = 'flex-start';
+        li.style.gap = '20px';
+        li.style.padding = '3px 8px';
+        li.style.fontFamily = 'monospace';
+        li.style.fontSize = '14px';
+
+        // Alternate background color for clean row stripes
+        if (moveNum % 2 === 0) {
+            li.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+        }
+
+        li.innerHTML = `
+            <span style="width: 30px; font-weight: bold;">${moveNum}.</span>
+            <span style="width: 50px;">${whiteMove}</span>
+            <span style="width: 50px;">${blackMove}</span>
+        `;
+
+        moveList.appendChild(li);
+    }
+
+    // scrolling
+    const container = moveList.parentElement || moveList;
+    container.scrollTop = container.scrollHeight;
 }
-
-
 
 let selectedSquare = null;
 let legalMoves = [];
@@ -141,16 +129,15 @@ let legalMoves = [];
 function handleSquareClick(squareName) {
     const { r, c } = game.squareToCoords(squareName);
 
-    // Guard clause: ensure board bounds exist
+    // guard clause: ensure board bounds exist
     if (!game.board[r] || game.board[r][c] === undefined) {
         return;
     }
 
     const clickedPiece = game.board[r][c];
 
-    // no piece is currently selected
+    //no piece is currently selected
     if (!selectedSquare) {
-        // Only allow selecting a piece that belongs to the CURRENT active turn
         if (clickedPiece && game.isMyPiece(clickedPiece)) {
             selectedSquare = squareName;
             legalMoves = game.getLegalMoves(squareName);
@@ -159,7 +146,7 @@ function handleSquareClick(squareName) {
         return;
     }
 
-    //deslect
+    //deselect
     if (selectedSquare === squareName) {
         selectedSquare = null;
         legalMoves = [];
@@ -167,7 +154,7 @@ function handleSquareClick(squareName) {
         return;
     }
 
-    //clicking antoehr peice
+    // select antoehr peice
     if (clickedPiece && game.isMyPiece(clickedPiece)) {
         selectedSquare = squareName;
         legalMoves = game.getLegalMoves(squareName);
@@ -175,40 +162,67 @@ function handleSquareClick(squareName) {
         return;
     }
 
-    //move/capture
+    //move/take
     if (legalMoves.includes(squareName)) {
         const fromSquare = selectedSquare;
         const moveSuccessful = game.move(fromSquare, squareName);
 
         if (moveSuccessful) {
-            // 1. Immediately wipe selection variables to prevent turn-desync
             selectedSquare = null;
             legalMoves = [];
 
-            // 2. Log history entry
-            const moveList = document.getElementById('move-list');
-            if (moveList && game.history.length > 0) {
-                const lastMove = game.history[game.history.length - 1];
-                const li = document.createElement('li');
-                // Previous turn made the move, so display who moved
-                const movedColor = game.turn === 'w' ? 'Black' : 'White';
-                li.textContent = `${movedColor}: ${lastMove}`;
-                moveList.appendChild(li);
-                moveList.parentElement.scrollTop = moveList.parentElement.scrollHeight;
-            }
-
-            // 3. Re-render updated board state
             renderBoard();
+            renderMoveHistory();
+
+            //check game-over popups
+            setTimeout(() => {
+                if (game.isCheckmate()) {
+                    const winner = game.turn === 'w' ? 'Black' : 'White';
+                    showGameOverPopup(`
+                        <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Checkmate!</h2>
+                        <p style="margin-bottom: 15px;">${winner} wins the game!</p>
+                        <button id="btn-restart" class="ui-btn">Play Again</button>
+                    `);
+                } else if (game.isThreefoldRepetition()) {
+                    showGameOverPopup(`
+                        <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Draw!</h2>
+                        <p style="margin-bottom: 15px;">Game drawn by threefold repetition.</p>
+                        <button id="btn-restart" class="ui-btn">Play Again</button>
+                    `);
+                } else if (game.isDraw()) {
+                    showGameOverPopup(`
+                        <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Stalemate / Draw!</h2>
+                        <p style="margin-bottom: 15px;">No legal moves remaining.</p>
+                        <button id="btn-restart" class="ui-btn">Play Again</button>
+                    `);
+                }
+            }, 100);
+
             return;
         }
     }
 
-    // If click was neither a legal target nor a piece switch, reset selection safely
+    //reset state if invalid click
     selectedSquare = null;
     legalMoves = [];
     renderBoard();
 }
 
+function showGameOverPopup(contentHTML) {
+    showPopup(contentHTML);
+
+    const restartBtn = document.getElementById('btn-restart');
+    if (restartBtn) {
+        restartBtn.addEventListener('click', () => {
+            game.reset();
+            selectedSquare = null;
+            legalMoves = [];
+            hidePopup();
+            renderBoard();
+            renderMoveHistory();
+        });
+    }
+}
 
 function showPopup(contentHTML) {
     popupModal.innerHTML = contentHTML;
@@ -268,12 +282,11 @@ document.getElementById('btn-settings').addEventListener('click', () => {
 
     document.getElementById('cb-pineapple-pieces').addEventListener('change', (e) => {
         usePineapplePieces = e.target.checked;
-        renderBoard(); // re-render to load new images
+        renderBoard();
     });
 });
 
-
-// Mode select popup
+//mode select popup
 document.getElementById('btn-play').addEventListener('click', () => {
     const html = `
         <h2 style="font-size: 20px; font-weight: bold;">Choose Game Mode</h2>
@@ -285,16 +298,13 @@ document.getElementById('btn-play').addEventListener('click', () => {
 
     document.getElementById('btn-cancel').addEventListener('click', hidePopup);
     document.getElementById('btn-2p').addEventListener('click', () => {
-        console.log("Starting 2 Player Mode");
         hidePopup();
     });
     document.getElementById('btn-stockfish').addEventListener('click', () => {
-        console.log("Opening Stockfish Setup");
-        // Next step: implement Stockfish setup popup here
         hidePopup();
     });
 });
 
-//initialize
+// initialize
 renderBoard();
-
+renderMoveHistory();
