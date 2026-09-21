@@ -53,6 +53,7 @@ if (window.Worker) {
                         legalMoves = [];
                         renderBoard();
                         renderMoveHistory();
+                        checkGameOver();
                     }
                 }
             }
@@ -259,28 +260,7 @@ function handleSquareClick(squareName) {
             }
 
             // game-over checks
-            setTimeout(() => {
-                if (game.isCheckmate()) {
-                    const winner = game.turn === 'w' ? 'Black' : 'White';
-                    showGameOverPopup(`
-                        <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Checkmate!</h2>
-                        <p style="margin-bottom: 15px;">${winner} wins the game!</p>
-                        <button id="btn-restart" class="ui-btn">Play Again</button>
-                    `);
-                } else if (game.isThreefoldRepetition()) {
-                    showGameOverPopup(`
-                        <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Draw!</h2>
-                        <p style="margin-bottom: 15px;">Game drawn by threefold repetition.</p>
-                        <button id="btn-restart" class="ui-btn">Play Again</button>
-                    `);
-                } else if (game.isDraw()) {
-                    showGameOverPopup(`
-                        <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Stalemate / Draw!</h2>
-                        <p style="margin-bottom: 15px;">No legal moves remaining.</p>
-                        <button id="btn-restart" class="ui-btn">Play Again</button>
-                    `);
-                }
-            }, 100);
+            setTimeout(checkGameOver, 100);
 
             return;
         }
@@ -289,6 +269,29 @@ function handleSquareClick(squareName) {
     selectedSquare = null;
     legalMoves = [];
     renderBoard();
+}
+
+function checkGameOver() {
+    if (game.isCheckmate()) {
+        const winner = game.turn === 'w' ? 'Black' : 'White';
+        showGameOverPopup(`
+            <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Checkmate!</h2>
+            <p style="margin-bottom: 15px;">${winner} wins the game!</p>
+            <button id="btn-restart" class="ui-btn">Play Again</button>
+        `);
+    } else if (game.isThreefoldRepetition()) {
+        showGameOverPopup(`
+            <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Draw!</h2>
+            <p style="margin-bottom: 15px;">Game drawn by threefold repetition.</p>
+            <button id="btn-restart" class="ui-btn">Play Again</button>
+        `);
+    } else if (game.isDraw()) {
+        showGameOverPopup(`
+            <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Stalemate / Draw!</h2>
+            <p style="margin-bottom: 15px;">No legal moves remaining.</p>
+            <button id="btn-restart" class="ui-btn">Play Again</button>
+        `);
+    }
 }
 
 function showGameOverPopup(contentHTML) {
