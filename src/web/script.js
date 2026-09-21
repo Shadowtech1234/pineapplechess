@@ -13,6 +13,8 @@ let currentTheme = 'Pineapple'; // Normal, Dark, Pineapple, CASE SENSITIVE
 
 let vsStockfish = false;
 let stockfishWorker = null;
+let stockfishReady = false;
+let pendingStockfishPosition = null;
 
 // stockfish configuration options
 let playerColor = 'w'; // 'w' or 'b'
@@ -34,8 +36,20 @@ if (window.Worker) {
     if (stockfishWorker) {
         // listen for messages/moves returned by stockfish
         stockfishWorker.onmessage = function (event) {
-            const line = event.data;
+            const line = typeof event.data === 'string' ? event.data.trim() : '';
             console.log('[Stockfish Output]:', line);
+
+            if (line === 'readyok') {
+                stockfishReady = true;
+
+                if (pendingStockfishPosition) {
+                    const position = pendingStockfishPosition;
+                    pendingStockfishPosition = null;
+                    stockfishWorker.postMessage(`position fen ${position}`);
+                    stockfishWorker.postMessage(`go depth ${stockfishDepth}`);
+                }
+                return;
+            }
 
             if (line.startsWith('bestmove')) {
                 const parts = line.split(' ');
@@ -73,15 +87,13 @@ function makeStockfishMove() {
     if (game.turn !== stockfishColor) return;
 
     const currentFen = game.getFen();
+    stockfishReady = false;
+    pendingStockfishPosition = currentFen;
 
     // reset calculation state and apply chosen difficulty skill level
     stockfishWorker.postMessage('ucinewgame');
     stockfishWorker.postMessage(`setoption name Skill Level value ${stockfishSkillLevel}`);
     stockfishWorker.postMessage('isready');
-
-    // send calculation command with chosen depth
-    stockfishWorker.postMessage(`position fen ${currentFen}`);
-    stockfishWorker.postMessage(`go depth ${stockfishDepth}`);
 }
 
 // piece image resolver
