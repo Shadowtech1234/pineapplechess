@@ -9,7 +9,7 @@ const body = document.body;
 
 let isFlipped = false;
 let usePineapplePieces = true;   
-let currentTheme = 'Normal'; // Normal, dark, pineapple
+let currentTheme = 'Pineapple'; // Normal, Dark, Pineapple, CASE SENSITIVE
 
 let vsStockfish = false;
 let stockfishWorker = null;
@@ -145,7 +145,7 @@ function renderBoard() {
 
                 img.onerror = () => {
                     img.onerror = null;
-                    
+
                     if (pieceCode[1] === 'n') {
                         const color = pieceCode[0] === 'w' ? 'white' : 'black';
                         const folder = usePineapplePieces ? 'pineapple' : 'normal';
@@ -481,5 +481,6 @@ function showStockfishSetupModal() {
 }
 
 // initialize
+body.className = `theme-${currentTheme.toLowerCase()}`;
 renderBoard();
 renderMoveHistory();
