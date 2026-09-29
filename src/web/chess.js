@@ -16,6 +16,8 @@ class Chess {
             ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
         ];
         this.history = [];
+        this.lastMove = null;
+        this.enPassantTarget = null;
         this.positionHistory = [this.getBoardSnapshot()];
 
         // Castling rights tracking
@@ -114,6 +116,11 @@ class Chess {
                     const target = this.board[nr][nc];
                     if (target && isEnemy(target)) {
                         moves.push({ from: {r, c}, to: {r: nr, c: nc} });
+                    } else if (!target && this.enPassantTarget && nr === this.enPassantTarget.r && nc === this.enPassantTarget.c) {
+                        const adjacentPawn = this.board[r][nc];
+                        if (adjacentPawn && adjacentPawn.toLowerCase() === 'p' && isEnemy(adjacentPawn)) {
+                            moves.push({ from: {r, c}, to: {r: nr, c: nc}, isEnPassant: true });
+                        }
                     }
                 }
             }
@@ -193,7 +200,10 @@ class Chess {
         if (this.castlingRights.b.k) castlingStr += 'k';
         if (this.castlingRights.b.q) castlingStr += 'q';
 
-        fen += (castlingStr || '-') + ' - 0 ' + (Math.floor(this.history.length / 2) + 1);
+        const enPassantSquare = this.enPassantTarget
+            ? this.coordsToSquare(this.enPassantTarget.r, this.enPassantTarget.c)
+            : '-';
+        fen += (castlingStr || '-') + ' ' + enPassantSquare + ' 0 ' + (Math.floor(this.history.length / 2) + 1);
         return fen;
     }
 
@@ -271,8 +281,10 @@ class Chess {
 
         for (let move of candidates) {
             const captured = this.board[move.to.r][move.to.c];
+            const enPassantCaptured = move.isEnPassant ? this.board[move.from.r][move.to.c] : null;
             this.board[move.to.r][move.to.c] = this.board[move.from.r][move.from.c];
             this.board[move.from.r][move.from.c] = null;
+            if (move.isEnPassant) this.board[move.from.r][move.to.c] = null;
 
             const kingPos = this.findKing(this.board, isWhite);
             if (kingPos && !this.isSquareAttacked(kingPos.r, kingPos.c, enemyColor)) {
@@ -281,13 +293,14 @@ class Chess {
 
             this.board[move.from.r][move.from.c] = this.board[move.to.r][move.to.c];
             this.board[move.to.r][move.to.c] = captured;
+            if (move.isEnPassant) this.board[move.from.r][move.to.c] = enPassantCaptured;
         }
 
         return legalMoves;
     }
 
     getBoardSnapshot() {
-        return JSON.stringify(this.board) + '|' + this.turn;
+        return JSON.stringify(this.board) + '|' + this.turn + '|' + JSON.stringify(this.enPassantTarget);
     }
 
     isThreefoldRepetition() {
@@ -337,18 +350,28 @@ class Chess {
         const legalTargets = this.getLegalMoves(fromSq);
         if (!legalTargets.includes(toSq)) return false;
 
+        this.lastMove = { from: fromSq, to: toSq };
+
         const from = this.squareToCoords(fromSq);
         const to = this.squareToCoords(toSq);
 
         const movingPiece = this.board[from.r][from.c];
         const capturedPiece = this.board[to.r][to.c];
         const type = movingPiece.toLowerCase();
+        const isEnPassant = type === 'p' && from.c !== to.c && !capturedPiece;
+        const enPassantCaptureRow = from.r;
+        const enPassantCapturedPiece = isEnPassant ? this.board[enPassantCaptureRow][to.c] : null;
 
-        const moveSan = this.getSanNotation(fromSq, toSq, movingPiece, capturedPiece);
+        const moveSan = this.getSanNotation(fromSq, toSq, movingPiece, capturedPiece || enPassantCapturedPiece);
 
         // Move King
         this.board[to.r][to.c] = movingPiece;
         this.board[from.r][from.c] = null;
+        if (isEnPassant) this.board[enPassantCaptureRow][to.c] = null;
+
+        this.enPassantTarget = type === 'p' && Math.abs(from.r - to.r) === 2
+            ? { r: (from.r + to.r) / 2, c: from.c }
+            : null;
 
         // Handle Rook relocation during Castling
         if (type === 'k' && Math.abs(from.c - to.c) === 2) {

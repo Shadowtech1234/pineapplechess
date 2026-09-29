@@ -59,14 +59,10 @@ if (window.Worker) {
                     const fromSq = bestMove.substring(0, 2);
                     const toSq = bestMove.substring(2, 4);
 
-                    const success = game.move(fromSq, toSq);
+                    const success = applyMoveWithAnimation(fromSq, toSq);
                     console.log(`Stockfish move ${fromSq}->${toSq} status:`, success);
 
                     if (success) {
-                        selectedSquare = null;
-                        legalMoves = [];
-                        renderBoard();
-                        renderMoveHistory();
                         checkGameOver();
                     }
                 }
@@ -140,8 +136,9 @@ function renderBoard() {
             // compare algebraic square names directly
             const isSelected = (squareName === selectedSquare);
             const isLegalTarget = legalMoves.includes(squareName);
+            const isLastMoveSquare = game.lastMove && (squareName === game.lastMove.from || squareName === game.lastMove.to);
 
-            square.className = `square ${isLight ? 'light' : 'dark'} ${isSelected ? 'highlight' : ''} ${isLegalTarget ? 'legal-target' : ''}`;
+            square.className = `square ${isLight ? 'light' : 'dark'} ${isSelected ? 'highlight' : ''} ${isLegalTarget ? 'legal-target' : ''} ${isLastMoveSquare ? 'last-move' : ''}`;
             square.dataset.square = squareName;
 
             // get piece code from the chess engine board array
@@ -154,6 +151,7 @@ function renderBoard() {
                 const img = document.createElement('img');
                 img.src = getPieceImageSrc(pieceCode);
                 img.alt = pieceCode;
+                img.draggable = false;
                 img.style.pointerEvents = 'none';
 
                 img.onerror = () => {
@@ -213,6 +211,192 @@ function renderMoveHistory() {
 
 let selectedSquare = null;
 let legalMoves = [];
+let dragState = null;
+let suppressBoardClick = false;
+
+function createPieceMotion(fromSquare, movingVisual = null) {
+    const sourceSquare = chessboard.querySelector(`[data-square="${fromSquare}"]`);
+    const sourceImage = movingVisual || sourceSquare?.querySelector('img');
+    if (!sourceImage) return null;
+
+    const rect = sourceImage.getBoundingClientRect();
+    const visual = movingVisual || sourceImage.cloneNode();
+    visual.classList.add('piece-motion');
+    visual.style.position = 'fixed';
+    visual.style.left = `${rect.left}px`;
+    visual.style.top = `${rect.top}px`;
+    visual.style.width = `${rect.width}px`;
+    visual.style.height = `${rect.height}px`;
+    visual.style.margin = '0';
+    visual.style.zIndex = '1000';
+    visual.style.pointerEvents = 'none';
+    visual.style.transition = 'none';
+    visual.style.transform = 'none';
+
+    if (!movingVisual) body.appendChild(visual);
+    return { visual, rect };
+}
+
+function finishPieceMotion(motion, toSquare) {
+    if (!motion) return;
+
+    const destinationImage = chessboard.querySelector(`[data-square="${toSquare}"] img`);
+    if (!destinationImage) {
+        motion.visual.remove();
+        return;
+    }
+
+    destinationImage.style.opacity = '0';
+    const destinationRect = destinationImage.getBoundingClientRect();
+    let finished = false;
+    const cleanup = () => {
+        if (finished) return;
+        finished = true;
+        motion.visual.remove();
+        if (destinationImage.isConnected) destinationImage.style.opacity = '';
+    };
+
+    motion.visual.addEventListener('transitionend', cleanup, { once: true });
+    setTimeout(cleanup, 260);
+    requestAnimationFrame(() => {
+        motion.visual.style.transition = 'transform 180ms ease';
+        motion.visual.style.transform = `translate(${destinationRect.left - motion.rect.left}px, ${destinationRect.top - motion.rect.top}px)`;
+    });
+}
+
+function applyMoveWithAnimation(fromSquare, toSquare, movingVisual = null) {
+    const motion = createPieceMotion(fromSquare, movingVisual);
+    if (!game.move(fromSquare, toSquare)) {
+        motion?.visual.remove();
+        return false;
+    }
+
+    selectedSquare = null;
+    legalMoves = [];
+    renderBoard();
+    renderMoveHistory();
+    finishPieceMotion(motion, toSquare);
+    return true;
+}
+
+function continueAfterPlayerMove() {
+    const stockfishColor = playerColor === 'w' ? 'b' : 'w';
+    if (vsStockfish && game.turn === stockfishColor && !game.isCheckmate() && !game.isDraw()) {
+        setTimeout(makeStockfishMove, 250);
+    }
+    setTimeout(checkGameOver, 100);
+}
+
+function beginPieceDrag(event) {
+    if (event.button !== 0) return;
+
+    const square = event.target.closest('.square');
+    const fromSquare = square?.dataset.square;
+    if (!fromSquare) return;
+
+    const { r, c } = game.squareToCoords(fromSquare);
+    const piece = game.board[r][c];
+    const stockfishColor = playerColor === 'w' ? 'b' : 'w';
+    if (!piece || !game.isMyPiece(piece) || (vsStockfish && game.turn === stockfishColor)) return;
+
+    const image = square.querySelector('img');
+    if (!image) return;
+
+    dragState = {
+        pointerId: event.pointerId,
+        fromSquare,
+        startX: event.clientX,
+        startY: event.clientY,
+        image,
+        imageRect: image.getBoundingClientRect(),
+        dragging: false,
+        visual: null
+    };
+}
+
+function moveDraggedPiece(event) {
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - dragState.startX;
+    const deltaY = event.clientY - dragState.startY;
+    if (!dragState.dragging && Math.hypot(deltaX, deltaY) >= 6) {
+        dragState.dragging = true;
+        const motion = createPieceMotion(dragState.fromSquare);
+        if (!motion) {
+            dragState.dragging = false;
+            return;
+        }
+        dragState.visual = motion.visual;
+        dragState.imageRect = motion.rect;
+        selectedSquare = dragState.fromSquare;
+        legalMoves = game.getLegalMoves(dragState.fromSquare);
+        renderBoard();
+
+        const sourceImage = chessboard.querySelector(`[data-square="${dragState.fromSquare}"] img`);
+        if (sourceImage) sourceImage.style.opacity = '0';
+    }
+
+    if (dragState.dragging) {
+        event.preventDefault();
+        dragState.visual.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+    }
+}
+
+function returnDraggedPiece(drag) {
+    if (!drag.visual) return;
+
+    let finished = false;
+    const cleanup = () => {
+        if (finished) return;
+        finished = true;
+        drag.visual.remove();
+        selectedSquare = null;
+        legalMoves = [];
+        renderBoard();
+    };
+
+    drag.visual.addEventListener('transitionend', cleanup, { once: true });
+    setTimeout(cleanup, 260);
+    requestAnimationFrame(() => {
+        drag.visual.style.transition = 'transform 180ms ease';
+        drag.visual.style.transform = 'translate(0, 0)';
+    });
+}
+
+function endPieceDrag(event) {
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    const drag = dragState;
+    dragState = null;
+    if (!drag.dragging) return;
+
+    suppressBoardClick = true;
+    setTimeout(() => { suppressBoardClick = false; }, 0);
+    const targetSquare = document.elementFromPoint(event.clientX, event.clientY)?.closest('.square')?.dataset.square;
+    if (targetSquare && legalMoves.includes(targetSquare)) {
+        if (applyMoveWithAnimation(drag.fromSquare, targetSquare, drag.visual)) {
+            continueAfterPlayerMove();
+            return;
+        }
+    }
+    returnDraggedPiece(drag);
+}
+
+chessboard.addEventListener('pointerdown', beginPieceDrag);
+window.addEventListener('pointermove', moveDraggedPiece);
+window.addEventListener('pointerup', endPieceDrag);
+window.addEventListener('pointercancel', (event) => {
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    const drag = dragState;
+    dragState = null;
+    if (drag.dragging) returnDraggedPiece(drag);
+});
+chessboard.addEventListener('click', (event) => {
+    if (!suppressBoardClick) return;
+    suppressBoardClick = false;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+}, true);
 
 function handleSquareClick(squareName) {
     //block clicks when it's stockfish's turn
@@ -258,21 +442,10 @@ function handleSquareClick(squareName) {
     // make move
     if (legalMoves.includes(squareName)) {
         const fromSquare = selectedSquare;
-        const moveSuccessful = game.move(fromSquare, squareName);
+        const moveSuccessful = applyMoveWithAnimation(fromSquare, squareName);
 
         if (moveSuccessful) {
-            selectedSquare = null;
-            legalMoves = [];
-
-            renderBoard();
-            renderMoveHistory();
-
-            if (vsStockfish && game.turn === stockfishColor && !game.isCheckmate() && !game.isDraw()) {
-                setTimeout(makeStockfishMove, 250);
-            }
-
-            // game-over checks
-            setTimeout(checkGameOver, 100);
+            continueAfterPlayerMove();
 
             return;
         }
