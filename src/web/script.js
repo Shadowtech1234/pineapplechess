@@ -15,6 +15,9 @@ let vsStockfish = false;
 let stockfishWorker = null;
 let stockfishReady = false;
 let pendingStockfishPosition = null;
+let analysisMode = false;
+let analysisLines = new Map();
+let navigationToken = 0;
 
 // stockfish configuration options
 let playerColor = 'w'; // 'w' or 'b'
@@ -46,12 +49,17 @@ if (window.Worker) {
                     const position = pendingStockfishPosition;
                     pendingStockfishPosition = null;
                     stockfishWorker.postMessage(`position fen ${position}`);
-                    stockfishWorker.postMessage(`go depth ${stockfishDepth}`);
+                    stockfishWorker.postMessage(`go depth ${analysisMode ? 12 : stockfishDepth}`);
                 }
                 return;
             }
 
+            if (analysisMode && line.startsWith('info ')) {
+                updateAnalysis(line);
+            }
+
             if (line.startsWith('bestmove')) {
+                if (analysisMode || !vsStockfish) return;
                 const parts = line.split(' ');
                 const bestMove = parts[1];
 
@@ -76,7 +84,7 @@ if (window.Worker) {
 }
 
 function makeStockfishMove() {
-    if (!stockfishWorker || !vsStockfish) return;
+    if (!stockfishWorker || !vsStockfish || analysisMode) return;
 
     // check if it's Stockfish's turn to play
     const stockfishColor = playerColor === 'w' ? 'b' : 'w';
@@ -90,6 +98,132 @@ function makeStockfishMove() {
     stockfishWorker.postMessage('ucinewgame');
     stockfishWorker.postMessage(`setoption name Skill Level value ${stockfishSkillLevel}`);
     stockfishWorker.postMessage('isready');
+}
+
+function requestAnalysis() {
+    if (!analysisMode || !stockfishWorker) return;
+    pendingStockfishPosition = game.getFen();
+    analysisLines.clear();
+    renderAnalysisLines();
+    stockfishWorker.postMessage('stop');
+    stockfishWorker.postMessage('ucinewgame');
+    stockfishWorker.postMessage('setoption name MultiPV value 3');
+    stockfishWorker.postMessage('isready');
+}
+
+function updateAnalysis(line) {
+    const variationMatch = line.match(/\bmultipv (\d+)/);
+    const scoreMatch = line.match(/ score (cp|mate) (-?\d+)/);
+    const pvMatch = line.match(/\bpv (.+)$/);
+    if (!scoreMatch) return;
+
+    const variation = variationMatch ? Number(variationMatch[1]) : 1;
+    const scoreType = scoreMatch[1];
+    const score = Number(scoreMatch[2]);
+    let whiteScore = game.turn === 'w' ? score : -score;
+    const mateInZero = scoreType === 'mate' && score === 0 && game.isCheckmate();
+    if (mateInZero) {
+        whiteScore = game.turn === 'w' ? -100 : 100;
+    }
+    if (variation === 1) updateEvaluation(scoreType, score, whiteScore, mateInZero);
+    analysisLines.set(variation, {
+        score: mateInZero ? '#' : formatEvaluation(scoreType, whiteScore),
+        moves: pvMatch ? formatPrincipalVariation(pvMatch[1]) : ''
+    });
+    renderAnalysisLines();
+}
+
+function formatEvaluation(scoreType, whiteScore) {
+    if (scoreType === 'mate') {
+        if (whiteScore === 0) return '#';
+        return `M${whiteScore > 0 ? '' : '-'}${Math.abs(whiteScore)}`;
+    }
+    const pawns = whiteScore / 100;
+    return `${pawns > 0 ? '+' : ''}${pawns.toFixed(2)}`;
+}
+
+function updateEvaluation(scoreType, score, whiteScore, mateInZero = false) {
+    const whiteZone = document.getElementById('evaluation-fill');
+    const blackZone = document.getElementById('eval-black-zone');
+    const whiteLabel = document.getElementById('evaluation-score');
+    const blackLabel = document.getElementById('black-evaluation-score');
+    if (!whiteZone || !blackZone || !whiteLabel || !blackLabel) return;
+
+    const track = document.getElementById('evaluation-track');
+    track?.classList.toggle('white-winning', mateInZero && whiteScore > 0);
+    track?.classList.toggle('black-winning', mateInZero && whiteScore < 0);
+    const adjustedScore = scoreType === 'mate' ? Math.sign(whiteScore) * 10000 : whiteScore;
+    const percentage = mateInZero
+        ? (whiteScore > 0 ? 100 : 0)
+        : Math.max(7, Math.min(93, 50 + adjustedScore / 100 * 5));
+    whiteZone.style.flexBasis = `${percentage}%`;
+    blackZone.style.flexBasis = `${100 - percentage}%`;
+    const scoreText = mateInZero ? '#' : formatEvaluation(scoreType, whiteScore);
+    whiteLabel.textContent = whiteScore >= 0 ? scoreText : '';
+    blackLabel.textContent = whiteScore < 0 ? scoreText : '';
+}
+
+function formatPrincipalVariation(uciMoves) {
+    const position = new Chess();
+    if (!position.loadFen(game.getFen())) return '';
+    const formatted = [];
+
+    for (const [index, uciMove] of uciMoves.split(/\s+/).entries()) {
+        if (!/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(uciMove)) break;
+        const from = uciMove.slice(0, 2);
+        const to = uciMove.slice(2, 4);
+        const isWhiteMove = position.turn === 'w';
+        const moveNumber = position.fullmoveNumber;
+        if (!position.move(from, to, uciMove[4] || 'q')) break;
+        const notation = position.history[position.history.length - 1];
+        if (isWhiteMove) formatted.push(`${moveNumber}. ${notation}`);
+        else if (index === 0) formatted.push(`${moveNumber}... ${notation}`);
+        else formatted.push(notation);
+    }
+    return formatted.join(' ');
+}
+
+function renderAnalysisLines() {
+    const container = document.getElementById('analysis-lines');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (analysisLines.size === 0) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'analysis-placeholder';
+        placeholder.textContent = stockfishWorker ? 'Waiting for Stockfish...' : 'Stockfish is unavailable.';
+        container.appendChild(placeholder);
+        return;
+    }
+
+    for (const [variation, line] of [...analysisLines.entries()].sort((a, b) => a[0] - b[0])) {
+        const row = document.createElement('div');
+        row.className = 'analysis-line';
+
+        const score = document.createElement('span');
+        score.className = 'analysis-line-score';
+        score.textContent = line.score;
+
+        const moves = document.createElement('button');
+        moves.className = 'analysis-line-moves';
+        moves.type = 'button';
+        moves.textContent = line.moves || '...';
+        moves.title = line.moves;
+        moves.addEventListener('click', () => moves.classList.toggle('expanded'));
+
+        const expand = document.createElement('button');
+        expand.className = 'analysis-line-expand';
+        expand.type = 'button';
+        expand.setAttribute('aria-label', `Expand engine line ${variation}`);
+        expand.textContent = '⌄';
+        expand.addEventListener('click', () => {
+            const expanded = moves.classList.toggle('expanded');
+            expand.textContent = expanded ? '⌃' : '⌄';
+        });
+
+        row.append(score, moves, expand);
+        container.appendChild(row);
+    }
 }
 
 // piece image resolver
@@ -178,36 +312,86 @@ function renderMoveHistory() {
     if (!moveList) return;
 
     moveList.innerHTML = '';
+    const initialFen = game.initialFen.split(/\s+/);
+    const initialMoveNumber = Number(initialFen[5]) || 1;
+    const initialPlyOffset = initialFen[1] === 'b' ? 1 : 0;
+    const rows = new Map();
 
-    for (let i = 0; i < game.history.length; i += 2) {
-        const moveNum = Math.floor(i / 2) + 1;
-        const whiteMove = game.history[i] || '';
-        const blackMove = game.history[i + 1] || '';
-
-        const li = document.createElement('li');
-        li.style.display = 'flex';
-        li.style.justifyContent = 'flex-start';
-        li.style.gap = '20px';
-        li.style.padding = '3px 8px';
-        li.style.fontFamily = 'monospace';
-        li.style.fontSize = '14px';
-
-        if (moveNum % 2 === 0) {
-            li.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+    for (let i = 0; i < game.history.length; i++) {
+        const moveNumberOffset = Math.floor((initialPlyOffset + i) / 2);
+        const moveNumber = initialMoveNumber + moveNumberOffset;
+        const rowKey = moveNumberOffset;
+        let rowData = rows.get(rowKey);
+        if (!rowData) {
+            const row = document.createElement('li');
+            const number = document.createElement('span');
+            number.textContent = `${moveNumber}.`;
+            row.appendChild(number);
+            const whiteCell = document.createElement('span');
+            const blackCell = document.createElement('span');
+            row.append(whiteCell, blackCell);
+            rowData = { row, whiteCell, blackCell };
+            rows.set(rowKey, rowData);
+            moveList.appendChild(rowData.row);
         }
 
-        li.innerHTML = `
-            <span style="width: 30px; font-weight: bold;">${moveNum}.</span>
-            <span style="width: 50px;">${whiteMove}</span>
-            <span style="width: 50px;">${blackMove}</span>
-        `;
-
-        moveList.appendChild(li);
+        const isWhiteMove = (initialPlyOffset + i) % 2 === 0;
+        const moveButton = document.createElement('button');
+        moveButton.className = `move-history-item${game.currentPly === i + 1 ? ' current-move' : ''}`;
+        moveButton.type = 'button';
+        moveButton.dataset.ply = String(i + 1);
+        moveButton.textContent = game.history[i];
+        moveButton.setAttribute('aria-label', `Go to move ${moveNumber}${isWhiteMove ? ' white' : ' black'}: ${game.history[i]}`);
+        moveButton.setAttribute('aria-current', game.currentPly === i + 1 ? 'step' : 'false');
+        moveButton.addEventListener('click', () => showPly(i + 1));
+        (isWhiteMove ? rowData.whiteCell : rowData.blackCell).appendChild(moveButton);
     }
 
-    const container = moveList.parentElement || moveList;
-    container.scrollTop = container.scrollHeight;
+    const activeMove = moveList.querySelector('.current-move');
+    if (activeMove) activeMove.scrollIntoView({ block: 'nearest' });
+    else if (game.currentPly === 0) moveList.scrollTop = 0;
+    else moveList.scrollTop = moveList.scrollHeight;
+    document.getElementById('btn-first-move').disabled = game.currentPly === 0;
+    document.getElementById('btn-previous-move').disabled = game.currentPly === 0;
+    document.getElementById('btn-next-move').disabled = game.currentPly >= game.history.length;
+    document.getElementById('btn-last-move').disabled = game.currentPly >= game.history.length;
 }
+
+function showPly(ply) {
+    if (!Number.isInteger(ply) || ply < 0 || ply >= game.positionStates.length) return;
+    const token = ++navigationToken;
+    selectedSquare = null;
+    legalMoves = [];
+
+    const rewindOnePly = () => {
+        if (token !== navigationToken || game.currentPly <= ply) return;
+        const previousMove = game.lastMove;
+        const motion = previousMove ? createPieceMotion(previousMove.to) : null;
+        if (!game.restorePly(game.currentPly - 1)) return;
+        renderBoard();
+        renderMoveHistory();
+        finishPieceMotion(motion, previousMove?.from);
+        if (game.currentPly > ply) {
+            setTimeout(rewindOnePly, 205);
+        } else if (analysisMode) {
+            requestAnalysis();
+        }
+    };
+
+    if (ply < game.currentPly) {
+        rewindOnePly();
+        return;
+    }
+    if (!game.restorePly(ply)) return;
+    renderBoard();
+    renderMoveHistory();
+    if (analysisMode) requestAnalysis();
+}
+
+document.getElementById('btn-first-move').addEventListener('click', () => showPly(0));
+document.getElementById('btn-previous-move').addEventListener('click', () => showPly(game.currentPly - 1));
+document.getElementById('btn-next-move').addEventListener('click', () => showPly(game.currentPly + 1));
+document.getElementById('btn-last-move').addEventListener('click', () => showPly(game.history.length));
 
 let selectedSquare = null;
 let legalMoves = [];
@@ -265,6 +449,7 @@ function finishPieceMotion(motion, toSquare) {
 }
 
 function applyMoveWithAnimation(fromSquare, toSquare, movingVisual = null) {
+    if (game.currentPly < game.history.length) return false;
     const motion = createPieceMotion(fromSquare, movingVisual);
     if (!game.move(fromSquare, toSquare)) {
         motion?.visual.remove();
@@ -276,10 +461,12 @@ function applyMoveWithAnimation(fromSquare, toSquare, movingVisual = null) {
     renderBoard();
     renderMoveHistory();
     finishPieceMotion(motion, toSquare);
+    if (analysisMode) requestAnalysis();
     return true;
 }
 
 function continueAfterPlayerMove() {
+    if (analysisMode) return;
     const stockfishColor = playerColor === 'w' ? 'b' : 'w';
     if (vsStockfish && game.turn === stockfishColor && !game.isCheckmate() && !game.isDraw()) {
         setTimeout(makeStockfishMove, 250);
@@ -289,6 +476,7 @@ function continueAfterPlayerMove() {
 
 function beginPieceDrag(event) {
     if (event.button !== 0) return;
+    if (game.currentPly < game.history.length) return;
 
     const square = event.target.closest('.square');
     const fromSquare = square?.dataset.square;
@@ -399,6 +587,7 @@ chessboard.addEventListener('click', (event) => {
 }, true);
 
 function handleSquareClick(squareName) {
+    if (game.currentPly < game.history.length) return;
     //block clicks when it's stockfish's turn
     const stockfishColor = playerColor === 'w' ? 'b' : 'w';
     if (vsStockfish && game.turn === stockfishColor) {
@@ -457,23 +646,27 @@ function handleSquareClick(squareName) {
 }
 
 function checkGameOver() {
+    if (analysisMode) return;
     if (game.isCheckmate()) {
         const winner = game.turn === 'w' ? 'Black' : 'White';
         showGameOverPopup(`
             <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Checkmate!</h2>
             <p style="margin-bottom: 15px;">${winner} wins the game!</p>
+            <button id="btn-analyze-game" class="ui-btn">Import into Analysis</button>
             <button id="btn-restart" class="ui-btn">Play Again</button>
         `);
     } else if (game.isThreefoldRepetition()) {
         showGameOverPopup(`
             <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Draw!</h2>
             <p style="margin-bottom: 15px;">Game drawn by threefold repetition.</p>
+            <button id="btn-analyze-game" class="ui-btn">Import into Analysis</button>
             <button id="btn-restart" class="ui-btn">Play Again</button>
         `);
     } else if (game.isDraw()) {
         showGameOverPopup(`
             <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Stalemate / Draw!</h2>
             <p style="margin-bottom: 15px;">No legal moves remaining.</p>
+            <button id="btn-analyze-game" class="ui-btn">Import into Analysis</button>
             <button id="btn-restart" class="ui-btn">Play Again</button>
         `);
     }
@@ -482,10 +675,14 @@ function checkGameOver() {
 function showGameOverPopup(contentHTML) {
     showPopup(contentHTML);
 
+    document.getElementById('btn-analyze-game')?.addEventListener('click', () => enterAnalysis());
+
     const restartBtn = document.getElementById('btn-restart');
     if (restartBtn) {
         restartBtn.addEventListener('click', () => {
             game.reset();
+            analysisMode = false;
+            body.classList.remove('analysis-mode');
             selectedSquare = null;
             legalMoves = [];
             hidePopup();
@@ -501,13 +698,271 @@ function showGameOverPopup(contentHTML) {
 }
 
 function showPopup(contentHTML) {
+    popupModal.classList.remove('pgn-export-popup');
     popupModal.innerHTML = contentHTML;
     overlay.classList.remove('hidden');
 }
 
 function hidePopup() {
     overlay.classList.add('hidden');
+    popupModal.classList.remove('pgn-export-popup');
 }
+
+function normalizeSan(notation) {
+    return notation.replace(/[+#?!]+$/g, '').replace(/e\.p\.$/i, '');
+}
+
+function findPgnMove(position, notation) {
+    const san = normalizeSan(notation.replace(/0/g, 'O'));
+    const coordinateMove = san.match(/^([a-h][1-8])[-x]?([a-h][1-8])$/);
+    const sanParts = san.match(/^([KQRBN])?([a-h]?[1-8]?)(x?)([a-h][1-8])(?:=?([QRBN]))?$/);
+    const castleTarget = san === 'O-O' ? 'g' : san === 'O-O-O' ? 'c' : null;
+    if (!coordinateMove && !sanParts && !castleTarget) return null;
+
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const piece = position.board[row][col];
+            if (!piece || !position.isMyPiece(piece)) continue;
+            const from = position.coordsToSquare(row, col);
+            for (const to of position.getLegalMoves(from)) {
+                if (coordinateMove && from === coordinateMove[1] && to === coordinateMove[2]) return { from, to };
+                if (castleTarget && piece.toLowerCase() === 'k' && from[0] === 'e'
+                    && from[1] === to[1] && to[0] === castleTarget) return { from, to };
+                if (!sanParts) continue;
+
+                const target = position.squareToCoords(to);
+                const captured = position.board[target.r][target.c]
+                    || (piece.toLowerCase() === 'p' && position.enPassantTarget
+                        && target.r === position.enPassantTarget.r && target.c === position.enPassantTarget.c);
+                const candidateType = piece.toUpperCase();
+                const requestedType = sanParts[1] || 'P';
+                const disambiguation = sanParts[2];
+                if (to !== sanParts[4] || candidateType !== requestedType) continue;
+                if (Boolean(sanParts[3]) !== Boolean(captured)) continue;
+                if (disambiguation && ![from[0], from[1]].includes(disambiguation)) continue;
+                return { from, to, promotion: sanParts[5]?.toLowerCase() };
+            }
+        }
+    }
+    return null;
+}
+
+function parsePgn(pgn) {
+    const fenHeader = pgn.match(/^\[FEN\s+"([^"]+)"\]/im);
+    const position = new Chess();
+    if (fenHeader && !position.loadFen(fenHeader[1])) throw new Error('The PGN starting position is invalid.');
+
+    let movesText = pgn
+        .replace(/^\s*\[[^\]]*\]\s*$/gm, '')
+        .replace(/\{[^}]*\}/g, ' ')
+        .replace(/;[^\r\n]*/g, ' ')
+        .replace(/\$\d+/g, ' ');
+    let previousMovesText;
+    do {
+        previousMovesText = movesText;
+        movesText = movesText.replace(/\([^()]*\)/g, ' ');
+    } while (movesText !== previousMovesText);
+    const tokens = movesText.split(/\s+/).filter(Boolean);
+
+    for (let token of tokens) {
+        token = token.replace(/^\d+\.(\.\.)?/, '');
+        if (!token || /^e\.p\.$/i.test(token) || /^(1-0|0-1|1\/2-1\/2|\*)$/.test(token)) continue;
+        const move = findPgnMove(position, token);
+        if (!move || !position.move(move.from, move.to, move.promotion)) {
+            throw new Error(`Could not read move: ${token}`);
+        }
+    }
+    return position;
+}
+
+function enterAnalysis(position = game) {
+    if (position !== game) Object.assign(game, position);
+    analysisMode = true;
+    vsStockfish = false;
+    body.classList.add('analysis-mode');
+    selectedSquare = null;
+    legalMoves = [];
+    renderBoard();
+    renderMoveHistory();
+    hidePopup();
+    requestAnalysis();
+}
+
+document.getElementById('btn-analysis').addEventListener('click', () => {
+    const activeGame = !analysisMode && game.history.length > 0
+        && !game.isCheckmate() && !game.isDraw() && !game.isThreefoldRepetition();
+    if (!activeGame) {
+        enterAnalysis();
+        return;
+    }
+
+    showPopup(`
+        <h2>Import Game into Analysis?</h2>
+        <p>Are you sure you want to import this game into analysis?</p>
+        <div class="popup-row">
+            <button id="btn-confirm-analysis" class="ui-btn">Import Game</button>
+            <button id="btn-cancel-analysis" class="ui-btn">Keep Playing</button>
+        </div>
+    `);
+    document.getElementById('btn-confirm-analysis').addEventListener('click', () => enterAnalysis());
+    document.getElementById('btn-cancel-analysis').addEventListener('click', hidePopup);
+});
+
+document.getElementById('btn-import-pgn').addEventListener('click', () => {
+    showPopup(`
+        <h2>Import PGN</h2>
+        <input id="pgn-file" type="file" accept=".pgn,text/plain">
+        <textarea id="pgn-input" placeholder="Paste a PGN game here"></textarea>
+        <div class="popup-row">
+            <button id="btn-load-pgn" class="ui-btn">Load Game</button>
+            <button id="btn-cancel-pgn" class="ui-btn">Cancel</button>
+        </div>
+        <p id="pgn-error" role="status"></p>
+    `);
+    document.getElementById('pgn-file').addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (file) document.getElementById('pgn-input').value = await file.text();
+    });
+    document.getElementById('btn-cancel-pgn').addEventListener('click', hidePopup);
+    document.getElementById('btn-load-pgn').addEventListener('click', () => {
+        try {
+            enterAnalysis(parsePgn(document.getElementById('pgn-input').value));
+        } catch (error) {
+            document.getElementById('pgn-error').textContent = error.message;
+        }
+    });
+});
+
+function buildPgnExport() {
+    const start = game.initialFen.split(' ');
+    const result = game.isCheckmate()
+        ? (game.turn === 'w' ? '0-1' : '1-0')
+        : (game.isDraw() || game.isThreefoldRepetition() ? '1/2-1/2' : '*');
+    const headers = ['[Event "Pineapple Chess Analysis"]', `[Result "${result}"]`];
+    if (game.initialFen !== new Chess().initialFen) {
+        headers.push('[SetUp "1"]', `[FEN "${game.initialFen}"]`);
+    }
+    const moveText = [];
+    let moveNumber = Number(start[5]) || 1;
+    let blackToMove = start[1] === 'b';
+    game.history.forEach((notation, index) => {
+        if (!blackToMove) moveText.push(`${moveNumber}.`);
+        else if (index === 0) moveText.push(`${moveNumber}...`);
+        moveText.push(notation);
+        if (blackToMove) moveNumber++;
+        blackToMove = !blackToMove;
+    });
+    moveText.push(result);
+    return `${headers.join('\n')}\n\n${moveText.join(' ')}\n`;
+}
+
+function downloadPgn(pgn) {
+    const blob = new Blob([pgn], { type: 'application/x-chess-pgn' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'pineapple-chess-game.pgn';
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+async function copyExportField(fieldId, statusId) {
+    const field = document.getElementById(fieldId);
+    const status = document.getElementById(statusId);
+    try {
+        await navigator.clipboard.writeText(field.value);
+        status.textContent = 'Copied';
+    } catch {
+        field.focus();
+        field.select();
+        const copied = document.execCommand('copy');
+        status.textContent = copied ? 'Copied' : 'Select and copy the text';
+    }
+}
+
+document.getElementById('btn-export-pgn').addEventListener('click', () => {
+    const pgn = buildPgnExport();
+    const fen = game.getFen();
+    showPopup(`
+        <h2>Export Game</h2>
+        <div class="export-field">
+            <label for="pgn-output">PGN</label>
+            <textarea id="pgn-output" rows="10" readonly spellcheck="false"></textarea>
+            <div class="export-copy-row">
+                <span id="pgn-copy-status" role="status"></span>
+                <button id="btn-copy-pgn" class="ui-btn export-copy" type="button">Copy PGN</button>
+            </div>
+        </div>
+        <div class="export-field">
+            <label for="fen-output">Current position FEN</label>
+            <textarea id="fen-output" class="fen-output" rows="2" readonly spellcheck="false"></textarea>
+            <div class="export-copy-row">
+                <span id="fen-copy-status" role="status"></span>
+                <button id="btn-copy-fen" class="ui-btn export-copy" type="button">Copy FEN</button>
+            </div>
+        </div>
+        <div class="popup-row export-actions">
+            <button id="btn-download-pgn" class="ui-btn" type="button">Download PGN</button>
+            <button id="btn-close-export" class="ui-btn" type="button">Close</button>
+        </div>
+    `);
+    popupModal.classList.add('pgn-export-popup');
+    document.getElementById('pgn-output').value = pgn;
+    document.getElementById('fen-output').value = fen;
+    document.getElementById('btn-copy-pgn').addEventListener('click', () => copyExportField('pgn-output', 'pgn-copy-status'));
+    document.getElementById('btn-copy-fen').addEventListener('click', () => copyExportField('fen-output', 'fen-copy-status'));
+    document.getElementById('btn-download-pgn').addEventListener('click', () => downloadPgn(pgn));
+    document.getElementById('btn-close-export').addEventListener('click', hidePopup);
+});
+
+document.getElementById('btn-set-position').addEventListener('click', () => {
+    showPopup(`
+        <h2>Set Position</h2>
+        <label for="fen-input">FEN</label>
+        <input id="fen-input" type="text" value="${game.getFen()}" spellcheck="false">
+        <div class="popup-row fen-actions">
+            <button id="btn-load-fen" class="ui-btn">Load Position</button>
+            <button id="btn-reset-position" class="ui-btn">Reset Board</button>
+            <button id="btn-cancel-fen" class="ui-btn">Cancel</button>
+        </div>
+        <p id="fen-error" role="status"></p>
+    `);
+    document.getElementById('btn-cancel-fen').addEventListener('click', hidePopup);
+    document.getElementById('btn-reset-position').addEventListener('click', () => {
+        game.reset();
+        enterAnalysis();
+    });
+    document.getElementById('btn-load-fen').addEventListener('click', () => {
+        if (!game.loadFen(document.getElementById('fen-input').value)) {
+            document.getElementById('fen-error').textContent = 'That FEN position is not valid.';
+            return;
+        }
+        enterAnalysis();
+    });
+});
+
+document.getElementById('btn-start-position').addEventListener('click', () => {
+    showPopup(`
+        <h2>Play From Position</h2>
+        <button id="btn-position-2p" class="ui-btn">2 Player Mode</button>
+        <button id="btn-position-stockfish" class="ui-btn">Play vs Stockfish</button>
+        <button id="btn-position-cancel" class="ui-btn">Cancel</button>
+    `);
+    document.getElementById('btn-position-cancel').addEventListener('click', hidePopup);
+    document.getElementById('btn-position-2p').addEventListener('click', () => {
+        const startFen = game.getFen();
+        game.loadFen(startFen);
+        analysisMode = false;
+        body.classList.remove('analysis-mode');
+        vsStockfish = false;
+        playerColor = 'w';
+        renderBoard();
+        renderMoveHistory();
+        hidePopup();
+    });
+    document.getElementById('btn-position-stockfish').addEventListener('click', () => {
+        showStockfishSetupModal(game.getFen());
+    });
+});
 
 // settings popup
 document.getElementById('btn-settings').addEventListener('click', () => {
@@ -553,7 +1008,7 @@ document.getElementById('btn-settings').addEventListener('click', () => {
 
     document.getElementById('sel-theme').addEventListener('change', (e) => {
         currentTheme = e.target.value;
-        body.className = `theme-${currentTheme.toLowerCase()}`;
+        body.className = `theme-${currentTheme.toLowerCase()}${analysisMode ? ' analysis-mode' : ''}`;
     });
 
     document.getElementById('cb-pineapple-pieces').addEventListener('change', (e) => {
@@ -575,6 +1030,8 @@ document.getElementById('btn-play').addEventListener('click', () => {
     document.getElementById('btn-cancel').addEventListener('click', hidePopup);
     
     document.getElementById('btn-2p').addEventListener('click', () => {
+        analysisMode = false;
+        body.classList.remove('analysis-mode');
         vsStockfish = false;
         playerColor = 'w';
         selectedSquare = null;
@@ -585,11 +1042,11 @@ document.getElementById('btn-play').addEventListener('click', () => {
         hidePopup();
     });
 
-    document.getElementById('btn-stockfish').addEventListener('click', showStockfishSetupModal);
+    document.getElementById('btn-stockfish').addEventListener('click', () => showStockfishSetupModal());
 });
 
 //stockfish setup
-function showStockfishSetupModal() {
+function showStockfishSetupModal(startFen = null) {
     // Make popup slightly shorter and wider for this modal
     popupModal.style.width = '360px';
     popupModal.style.padding = '15px 25px';
@@ -652,17 +1109,20 @@ function showStockfishSetupModal() {
         }
 
         vsStockfish = true;
+        analysisMode = false;
+        body.classList.remove('analysis-mode');
         selectedSquare = null;
         legalMoves = [];
-        game.reset();
+        if (startFen) game.loadFen(startFen);
+        else game.reset();
 
         renderBoard();
         renderMoveHistory();
         resetPopupDimensions();
         hidePopup();
 
-        //if player chose black, stockfish automatically takes the first move as White
-        if (playerColor === 'b') {
+        const stockfishColor = playerColor === 'w' ? 'b' : 'w';
+        if (game.turn === stockfishColor) {
             setTimeout(makeStockfishMove, 300);
         }
     });

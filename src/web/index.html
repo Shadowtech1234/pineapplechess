@@ -16,12 +16,23 @@
         <!-- replaces sidebarview -->
         <aside class="sidebar">
             <button id="btn-play" class="ui-btn">Play</button>
+            <button id="btn-analysis" class="ui-btn">Analysis</button>
             <button id="btn-settings" class="ui-btn">Settings</button>
         </aside>
 
         <!-- replaces boardview yayayyayaya-->
         <main class="main-content">
             <div class="board-wrapper">
+                <div id="board-evaluation" class="board-evaluation" aria-label="Position evaluation">
+                    <div id="evaluation-track" class="evaluation-track">
+                        <div id="eval-black-zone" class="eval-black-zone">
+                            <span id="black-evaluation-score"></span>
+                        </div>
+                        <div id="evaluation-fill" class="evaluation-fill">
+                            <span id="evaluation-score">0.0</span>
+                        </div>
+                    </div>
+                </div>
                 <div id="chessboard" class="chessboard">
                     
                 </div>
@@ -29,9 +40,26 @@
 
             <!-- Move History List yyyyyyyyyyyyyayayayayayyayya-->
             <div class="move-list-container">
+                <section id="analysis-panel" class="analysis-panel" aria-label="Position analysis">
+                    <div id="analysis-lines" class="analysis-lines" aria-label="Stockfish continuations">
+                        <div class="analysis-placeholder">Engine lines will appear here.</div>
+                    </div>
+                    <div class="analysis-actions">
+                        <button id="btn-import-pgn" class="ui-btn">Import PGN</button>
+                        <button id="btn-export-pgn" class="ui-btn">Export PGN</button>
+                        <button id="btn-set-position" class="ui-btn">Set Position</button>
+                        <button id="btn-start-position" class="ui-btn">Play From Position</button>
+                    </div>
+                </section>
                 <ul id="move-list" class="move-list">
                    
                 </ul>
+                <div class="move-navigation" aria-label="Move navigation">
+                    <button id="btn-first-move" class="nav-btn" title="Go to start" aria-label="Go to start">|&lt;</button>
+                    <button id="btn-previous-move" class="nav-btn" title="Previous move" aria-label="Previous move">&lt;</button>
+                    <button id="btn-next-move" class="nav-btn" title="Next move" aria-label="Next move">&gt;</button>
+                    <button id="btn-last-move" class="nav-btn" title="Go to latest move" aria-label="Go to latest move">&gt;|</button>
+                </div>
             </div>
         </main>
     </div>

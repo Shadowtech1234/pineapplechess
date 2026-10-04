@@ -18,13 +18,18 @@ class Chess {
         this.history = [];
         this.lastMove = null;
         this.enPassantTarget = null;
+        this.halfmoveClock = 0;
+        this.fullmoveNumber = 1;
         this.positionHistory = [this.getBoardSnapshot()];
+        this.currentPly = 0;
 
         // Castling rights tracking
         this.castlingRights = {
             w: { k: true, q: true },
             b: { k: true, q: true }
         };
+        this.positionStates = [this.captureState()];
+        this.initialFen = this.getFen();
     }
 
     isMyPiece(piece) {
@@ -203,8 +208,93 @@ class Chess {
         const enPassantSquare = this.enPassantTarget
             ? this.coordsToSquare(this.enPassantTarget.r, this.enPassantTarget.c)
             : '-';
-        fen += (castlingStr || '-') + ' ' + enPassantSquare + ' 0 ' + (Math.floor(this.history.length / 2) + 1);
+        fen += (castlingStr || '-') + ' ' + enPassantSquare + ' ' + this.halfmoveClock + ' ' + this.fullmoveNumber;
         return fen;
+    }
+
+    captureState() {
+        return {
+            board: this.board.map(row => row.slice()),
+            turn: this.turn,
+            enPassantTarget: this.enPassantTarget ? { ...this.enPassantTarget } : null,
+            halfmoveClock: this.halfmoveClock,
+            fullmoveNumber: this.fullmoveNumber,
+            castlingRights: {
+                w: { ...this.castlingRights.w },
+                b: { ...this.castlingRights.b }
+            },
+            lastMove: this.lastMove ? { ...this.lastMove } : null
+        };
+    }
+
+    restorePly(ply) {
+        if (!Number.isInteger(ply) || ply < 0 || ply >= this.positionStates.length) return false;
+        const state = this.positionStates[ply];
+        this.board = state.board.map(row => row.slice());
+        this.turn = state.turn;
+        this.enPassantTarget = state.enPassantTarget ? { ...state.enPassantTarget } : null;
+        this.halfmoveClock = state.halfmoveClock;
+        this.fullmoveNumber = state.fullmoveNumber;
+        this.castlingRights = {
+            w: { ...state.castlingRights.w },
+            b: { ...state.castlingRights.b }
+        };
+        this.lastMove = state.lastMove ? { ...state.lastMove } : null;
+        this.currentPly = ply;
+        this.positionHistory = this.positionStates.slice(0, ply + 1).map(item =>
+            JSON.stringify(item.board) + '|' + item.turn + '|' + JSON.stringify(item.enPassantTarget)
+        );
+        return true;
+    }
+
+    loadFen(fen) {
+        if (typeof fen !== 'string') return false;
+        const fields = fen.trim().split(/\s+/);
+        if (fields.length < 4) return false;
+
+        const rows = fields[0].split('/');
+        if (rows.length !== 8) return false;
+        const board = [];
+        for (const rowText of rows) {
+            const row = [];
+            for (const symbol of rowText) {
+                if (/^[1-8]$/.test(symbol)) {
+                    for (let count = Number(symbol); count > 0; count--) row.push(null);
+                } else if (/^[prnbqkPRNBQK]$/.test(symbol)) {
+                    row.push(symbol);
+                } else {
+                    return false;
+                }
+            }
+            if (row.length !== 8) return false;
+            board.push(row);
+        }
+        if (fields[1] !== 'w' && fields[1] !== 'b') return false;
+        if (fields[2] !== '-' && !/^(K?Q?k?q?)$/.test(fields[2])) return false;
+        if (fields[3] !== '-' && !/^[a-h][36]$/.test(fields[3])) return false;
+        const halfmoveClock = fields[4] === undefined ? 0 : Number(fields[4]);
+        const fullmoveNumber = fields[5] === undefined ? 1 : Number(fields[5]);
+        if (!Number.isInteger(halfmoveClock) || halfmoveClock < 0
+            || !Number.isInteger(fullmoveNumber) || fullmoveNumber < 1) return false;
+        if (board.flat().filter(piece => piece === 'K').length !== 1
+            || board.flat().filter(piece => piece === 'k').length !== 1) return false;
+
+        this.board = board;
+        this.turn = fields[1];
+        this.halfmoveClock = halfmoveClock;
+        this.fullmoveNumber = fullmoveNumber;
+        this.castlingRights = {
+            w: { k: fields[2].includes('K'), q: fields[2].includes('Q') },
+            b: { k: fields[2].includes('k'), q: fields[2].includes('q') }
+        };
+        this.enPassantTarget = fields[3] === '-' ? null : this.squareToCoords(fields[3]);
+        this.history = [];
+        this.lastMove = null;
+        this.currentPly = 0;
+        this.positionHistory = [this.getBoardSnapshot()];
+        this.positionStates = [this.captureState()];
+        this.initialFen = this.getFen();
+        return true;
     }
 
     findKing(board, isWhite) {
@@ -314,7 +404,7 @@ class Chess {
         return count >= 3;
     }
 
-    getSanNotation(fromSq, toSq, piece, captured) {
+    getSanNotation(fromSq, toSq, piece, captured, promotion = null) {
         if (!piece) return `${fromSq}-${toSq}`;
 
         const type = piece.toLowerCase();
@@ -338,34 +428,59 @@ class Chess {
 
         if (type === 'p') {
             if (isCapture) {
-                return `${fromSq[0]}x${toSq}`;
+                return `${fromSq[0]}x${toSq}${promotion ? `=${promotion.toUpperCase()}` : ''}`;
             }
-            return toSq;
+            return `${toSq}${promotion ? `=${promotion.toUpperCase()}` : ''}`;
         }
 
-        return `${pieceLetter}${isCapture ? 'x' : ''}${toSq}`;
+        const alternatives = [];
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const candidate = this.board[row][col];
+                if (!candidate || candidate.toLowerCase() !== type || !this.isMyPiece(candidate)) continue;
+                const square = this.coordsToSquare(row, col);
+                if (square === fromSq) continue;
+                if (this.getLegalMoves(square).includes(toSq)) alternatives.push(square);
+            }
+        }
+        let disambiguation = '';
+        if (alternatives.length) {
+            if (!alternatives.some(square => square[0] === fromSq[0])) disambiguation = fromSq[0];
+            else if (!alternatives.some(square => square[1] === fromSq[1])) disambiguation = fromSq[1];
+            else disambiguation = fromSq;
+        }
+        return `${pieceLetter}${disambiguation}${isCapture ? 'x' : ''}${toSq}`;
     }
 
-    move(fromSq, toSq) {
+    move(fromSq, toSq, promotion = 'q') {
         const legalTargets = this.getLegalMoves(fromSq);
         if (!legalTargets.includes(toSq)) return false;
 
-        this.lastMove = { from: fromSq, to: toSq };
-
         const from = this.squareToCoords(fromSq);
         const to = this.squareToCoords(toSq);
-
         const movingPiece = this.board[from.r][from.c];
         const capturedPiece = this.board[to.r][to.c];
         const type = movingPiece.toLowerCase();
+        const isPromotion = type === 'p' && (to.r === 0 || to.r === 7);
+        if (isPromotion && !/^[qrbn]$/i.test(promotion)) return false;
+
+        if (this.currentPly < this.history.length) {
+            this.history = this.history.slice(0, this.currentPly);
+            this.positionStates = this.positionStates.slice(0, this.currentPly + 1);
+            this.positionHistory = this.positionHistory.slice(0, this.currentPly + 1);
+        }
+
+        this.lastMove = { from: fromSq, to: toSq };
         const isEnPassant = type === 'p' && from.c !== to.c && !capturedPiece;
         const enPassantCaptureRow = from.r;
         const enPassantCapturedPiece = isEnPassant ? this.board[enPassantCaptureRow][to.c] : null;
 
-        const moveSan = this.getSanNotation(fromSq, toSq, movingPiece, capturedPiece || enPassantCapturedPiece);
+        const promotedPiece = isPromotion ? promotion.toLowerCase() : null;
+        const moveSan = this.getSanNotation(fromSq, toSq, movingPiece, capturedPiece || enPassantCapturedPiece, promotedPiece);
 
-        // Move King
-        this.board[to.r][to.c] = movingPiece;
+        this.board[to.r][to.c] = isPromotion
+            ? (movingPiece === 'P' ? promotedPiece.toUpperCase() : promotedPiece)
+            : movingPiece;
         this.board[from.r][from.c] = null;
         if (isEnPassant) this.board[enPassantCaptureRow][to.c] = null;
 
@@ -398,9 +513,17 @@ class Chess {
         }
 
         this.history.push(moveSan);
+        this.halfmoveClock = type === 'p' || capturedPiece || enPassantCapturedPiece ? 0 : this.halfmoveClock + 1;
+        if (this.turn === 'b') this.fullmoveNumber++;
 
         this.turn = this.turn === 'w' ? 'b' : 'w';
+        const checkedKing = this.findKing(this.board, this.turn === 'w');
+        if (checkedKing && this.isSquareAttacked(checkedKing.r, checkedKing.c, this.turn === 'w' ? 'b' : 'w')) {
+            this.history[this.history.length - 1] += this.hasLegalMoves() ? '+' : '#';
+        }
         this.positionHistory.push(this.getBoardSnapshot());
+        this.currentPly = this.history.length;
+        this.positionStates.push(this.captureState());
 
         return true;
     }
