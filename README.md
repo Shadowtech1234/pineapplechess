@@ -3,13 +3,13 @@ Pineapple Chess is now availbe to download or playable in your browser!
 
 A custom chess game themed PINEAPPLES!
 
-Showcase Video:
+Showcase Video(This is for the old desktop version, but it is almost identical to the brand new version which is on the web):
 
 https://github.com/user-attachments/assets/831b4ed4-0aa2-4813-bee9-df7de315c1a2
 
 
 
-
+(This is for the old desktop version, but it is almost identical to the brand new version which is on the web):
 <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/pineapplemode.png" width="45%"></img> <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/lightmode.png" width="45%"></img> <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/darkmode.png" width="45%"></img> <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/gamemodes.png" width="45%"></img> <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/stockfish.png" width="45%"></img> <img src="https://github.com/Shadowtech1234/pineapplechess/blob/master/src/resources/gallery/settings.png" width="45%"></img> 
 
 First 3 pictures showcase the themes available, then the next 3 are just showcasing the UI.
@@ -17,6 +17,7 @@ First 3 pictures showcase the themes available, then the next 3 are just showcas
 
 ##  Quick Start
 This is for the downloadable, for the web, just click the link in the About section.
+> ⚠️ **Important Update Notice:** Moving forward, all future updates, features, and bug fixes will be developed exclusively for the **web version**. The desktop downloadable version will remain permanently at v1.0.0 and will not receive these new features.
 1. Download the latest installer **`PineappleChess-1.0.0.exe`** from the Releases section.
 2. Double-click to run the setup wizard and follow the prompts.
 3. Launch **Pineapple Chess** directly from your Desktop or Start Menu!
@@ -27,7 +28,7 @@ This is for the downloadable, for the web, just click the link in the About sect
 
 * **Custom Pineapple Visual Theme:** Features pineapple themed chess pieces alongside classic piece sets.
 * **Interactive UI & Sidebar:** Displays move history, Stockfish game config, and settings to easily switch themes.
-* **Standalone Execution for downloadable:** Built as a native Windows installer (`.exe`) with bundled JavaFX runtime components, no system JDK required.
+* **Standalone Execution for downloadable:** Built as a native Windows installer (`.exe`) with bundled JavaFX runtime components, no system JDK required.(deprecated)
 * **Available on the Web:** You can now play on your browser.
 * **Play against Bots:** Powered by Stockfish, you can play against bots with varying difficulties.
 * **2 Player Mode:** If you have 2 people in front of a computer, you can play against each other on 1 computer! With an optional board flip feature!
@@ -37,6 +38,9 @@ This is for the downloadable, for the web, just click the link in the About sect
 
 ---
 <p align="center">Powered by the open-source <a href="https://stockfishchess.org/">Stockfish</a> chess engine for computer move generation and position evaluation.</p>
+
+---
+<p align="center">Special thanks to Lichess for providing the open-source puzzle dataset!</p>
 
 ---
 <p align="center">Made with ❤️ by <a href="https://github.com/Shadowtech1234">Theenash</a></p>
