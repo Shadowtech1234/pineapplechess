@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 
-<!-- Update Open Graph metadata -->
-<meta property="og:title" content="Pineapple Chess - A Custom Chess GUI Themed Around Pineapples Made by Theenash!">
-<meta property="og:description" content="A custom chess GUI themed around pineapples made by Theenash! Play Pineapple Chess now!">
     <meta charset="UTF-8">
-    <title>Pineapple Chess</title>
+    <meta name="description" content="Play chess against a friend or Stockfish, analyze positions, and solve puzzles, but its all themed PINEAPPLES!">
+    <meta property="og:title" content="Pineapple Chess - Play, Analyze, Solve Puzzles, and PINEAPPLE THEMED!">
+    <meta property="og:description" content="Play chess against a friend or Stockfish, analyze positions, and puzzles, with a special theme of PINEAPPLES!">
+    <title>Pineapple Chess - Play, Analyze, and Solve Puzzles</title>
     
     <!-- website favicon -->
     <link rel="icon" type="image/x-icon" href="./favicon.ico">
@@ -20,6 +20,7 @@
         <!-- replaces sidebarview -->
         <aside class="sidebar">
             <button id="btn-play" class="ui-btn">Play</button>
+            <button id="btn-puzzles" class="ui-btn">Puzzles</button>
             <button id="btn-analysis" class="ui-btn">Analysis</button>
             <button id="btn-settings" class="ui-btn">Settings</button>
         </aside>
@@ -65,6 +66,15 @@
                     <button id="btn-last-move" class="nav-btn" title="Go to latest move" aria-label="Go to latest move">&gt;|</button>
                 </div>
             </div>
+            <section id="puzzle-controls" class="puzzle-controls hidden" aria-label="Puzzle progress">
+                <p id="puzzle-turn" class="puzzle-turn" role="status" aria-live="polite"></p>
+                <p>Streak: <strong id="puzzle-streak">0</strong></p>
+                <p>Highest streak: <strong id="puzzle-highest-streak">0</strong></p>
+                <p>Mistakes: <strong id="puzzle-mistakes">0</strong></p>
+                <p>Hints: <strong id="puzzle-hints">0</strong></p>
+                <button id="btn-puzzle-hint" class="ui-btn" type="button">Hint</button>
+                <p id="puzzle-hint-status" class="puzzle-hint-status" role="status" aria-live="polite"></p>
+            </section>
         </main>
     </div>
 
@@ -78,7 +88,11 @@
     <!-- load chess.js(game engine) -->
     <script src="chess.js"></script>
 
+    <!-- Load module scripts -->
+    <script src="puzzles.js"></script>
+
     <!-- load ui scipt -->
     <script src="script.js"></script>
+
 </body>
 </html>

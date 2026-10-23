@@ -370,6 +370,7 @@ function showPly(ply) {
         if (!game.restorePly(game.currentPly - 1)) return;
         renderBoard();
         renderMoveHistory();
+
         finishPieceMotion(motion, previousMove?.from);
         if (game.currentPly > ply) {
             setTimeout(rewindOnePly, 205);
@@ -465,7 +466,13 @@ function applyMoveWithAnimation(fromSquare, toSquare, movingVisual = null) {
     return true;
 }
 
-function continueAfterPlayerMove() {
+function continueAfterPlayerMove(userUCI = null) {
+    if (typeof isPuzzleModeActive !== 'undefined' && isPuzzleModeActive) {
+        if (userUCI && typeof handleUserMove === 'function') {
+            handleUserMove(userUCI);
+        }
+        return;
+    }
     if (analysisMode) return;
     const stockfishColor = playerColor === 'w' ? 'b' : 'w';
     if (vsStockfish && game.turn === stockfishColor && !game.isCheckmate() && !game.isDraw()) {
@@ -485,6 +492,7 @@ function beginPieceDrag(event) {
     const { r, c } = game.squareToCoords(fromSquare);
     const piece = game.board[r][c];
     const stockfishColor = playerColor === 'w' ? 'b' : 'w';
+    if (typeof isPuzzleModeActive !== 'undefined' && isPuzzleModeActive && (typeof isOpponentMoving !== 'undefined' && isOpponentMoving || game.turn !== playerColor)) return;
     if (!piece || !game.isMyPiece(piece) || (vsStockfish && game.turn === stockfishColor)) return;
 
     const image = square.querySelector('img');
@@ -563,7 +571,8 @@ function endPieceDrag(event) {
     const targetSquare = document.elementFromPoint(event.clientX, event.clientY)?.closest('.square')?.dataset.square;
     if (targetSquare && legalMoves.includes(targetSquare)) {
         if (applyMoveWithAnimation(drag.fromSquare, targetSquare, drag.visual)) {
-            continueAfterPlayerMove();
+            const userUCI = `${drag.fromSquare}${targetSquare}`;
+            continueAfterPlayerMove(userUCI);
             return;
         }
     }
@@ -591,6 +600,9 @@ function handleSquareClick(squareName) {
     //block clicks when it's stockfish's turn
     const stockfishColor = playerColor === 'w' ? 'b' : 'w';
     if (vsStockfish && game.turn === stockfishColor) {
+        return;
+    }
+    if (typeof isPuzzleModeActive !== 'undefined' && isPuzzleModeActive && (typeof isOpponentMoving !== 'undefined' && isOpponentMoving || game.turn !== playerColor)) {
         return;
     }
 
@@ -634,7 +646,8 @@ function handleSquareClick(squareName) {
         const moveSuccessful = applyMoveWithAnimation(fromSquare, squareName);
 
         if (moveSuccessful) {
-            continueAfterPlayerMove();
+            const userUCI = `${fromSquare}${squareName}`;
+            continueAfterPlayerMove(userUCI);
 
             return;
         }
@@ -699,6 +712,7 @@ function showGameOverPopup(contentHTML) {
 
 function showPopup(contentHTML) {
     popupModal.classList.remove('pgn-export-popup');
+    popupModal.classList.remove('welcome-popup');
     popupModal.innerHTML = contentHTML;
     overlay.classList.remove('hidden');
 }
@@ -706,6 +720,7 @@ function showPopup(contentHTML) {
 function hidePopup() {
     overlay.classList.add('hidden');
     popupModal.classList.remove('pgn-export-popup');
+    popupModal.classList.remove('welcome-popup');
 }
 
 function normalizeSan(notation) {
@@ -776,6 +791,7 @@ function parsePgn(pgn) {
 }
 
 function enterAnalysis(position = game) {
+    if (typeof stopPuzzleSession === 'function') stopPuzzleSession();
     if (position !== game) Object.assign(game, position);
     analysisMode = true;
     vsStockfish = false;
@@ -951,6 +967,7 @@ document.getElementById('btn-start-position').addEventListener('click', () => {
     document.getElementById('btn-position-2p').addEventListener('click', () => {
         const startFen = game.getFen();
         game.loadFen(startFen);
+        if (typeof stopPuzzleSession === 'function') stopPuzzleSession();
         analysisMode = false;
         body.classList.remove('analysis-mode');
         vsStockfish = false;
@@ -991,7 +1008,7 @@ document.getElementById('btn-settings').addEventListener('click', () => {
         <button id="btn-close-settings" class="ui-btn" style="margin-top: 10px;">Close</button>
 
         <div style="font-size: 12px; text-align: center; margin-top: 15px; opacity: 0.8;">
-            <p>v1.0.0</p>
+            <p>v2.0.0</p>
             <p>Pineapple Chess uses Stockfish, an open-source chess engine.</p>
             <p>Pineapple Chess is developed by Theenash M</p>
         </div>
@@ -1030,6 +1047,7 @@ document.getElementById('btn-play').addEventListener('click', () => {
     document.getElementById('btn-cancel').addEventListener('click', hidePopup);
     
     document.getElementById('btn-2p').addEventListener('click', () => {
+        if (typeof stopPuzzleSession === 'function') stopPuzzleSession();
         analysisMode = false;
         body.classList.remove('analysis-mode');
         vsStockfish = false;
@@ -1044,6 +1062,40 @@ document.getElementById('btn-play').addEventListener('click', () => {
 
     document.getElementById('btn-stockfish').addEventListener('click', () => showStockfishSetupModal());
 });
+
+document.getElementById('btn-puzzles').addEventListener('click', showPuzzleDifficultyModal);
+
+function showPuzzleDifficultyModal() {
+    const html = `
+        <h2 style="font-size: 20px; font-weight: bold;">Select Puzzle Difficulty</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%;">
+            <button id="elo-btn-1" class="ui-btn">400-599</button>
+            <button id="elo-btn-2" class="ui-btn">600-799</button>
+            <button id="elo-btn-3" class="ui-btn">800-999</button>
+            <button id="elo-btn-4" class="ui-btn">1000-1199</button>
+            <button id="elo-btn-5" class="ui-btn">1200-1399</button>
+            <button id="elo-btn-6" class="ui-btn">1400-1599</button>
+            <button id="elo-btn-7" class="ui-btn">1600-1799</button>
+            <button id="elo-btn-8" class="ui-btn">1800+</button>
+        </div>
+        <button id="btn-cancel-puzzle" class="ui-btn" style="margin-top: 10px; width: 100%;">Cancel</button>
+    `;
+    showPopup(html);
+
+    document.getElementById('btn-cancel-puzzle').addEventListener('click', hidePopup);
+
+    for (let level = 1; level <= 8; level++) {
+        const btn = document.getElementById(`elo-btn-${level}`);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                hidePopup();
+                if (typeof startPuzzleSession === 'function') {
+                    startPuzzleSession(level);
+                }
+            });
+        }
+    }
+}
 
 //stockfish setup
 function showStockfishSetupModal(startFen = null) {
@@ -1093,6 +1145,7 @@ function showStockfishSetupModal(startFen = null) {
     });
 
     document.getElementById('btn-start-stockfish').addEventListener('click', () => {
+        if (typeof stopPuzzleSession === 'function') stopPuzzleSession();
         const difficulty = document.querySelector('input[name="difficulty"]:checked').value;
         playerColor = document.querySelector('input[name="side"]:checked').value;
 
@@ -1132,3 +1185,27 @@ function showStockfishSetupModal(startFen = null) {
 body.className = `theme-${currentTheme.toLowerCase()}`;
 renderBoard();
 renderMoveHistory();
+
+if (localStorage.getItem('pineappleChessWelcomeSeen') !== 'true') {
+    showPopup(`
+        <div class="welcome-content">
+            <h2>Welcome to Pineapple Chess!</h2>
+            <p>A pineapple-themed chess website for playing, analyzing, and improving your game.</p>
+            <ul>
+                <li>Play a friend locally or challenge Stockfish at different strengths.</li>
+                <li>Explore positions with engine analysis, evaluation, and multiple lines.</li>
+                <li>Import and export PGN games, or set up positions with FEN.</li>
+                <li>Solve rating-based puzzles, track your streaks and mistakes, and use hints.</li>
+                <li>Customize the board theme and piece style in Settings.</li>
+            
+            </ul>
+            <p>Made with ❤️ by Theenash</p>
+        </div>
+        <button id="btn-close-welcome" class="ui-btn" type="button">Let's play</button>
+    `);
+    popupModal.classList.add('welcome-popup');
+    document.getElementById('btn-close-welcome').addEventListener('click', () => {
+        localStorage.setItem('pineappleChessWelcomeSeen', 'true');
+        hidePopup();
+    });
+}

@@ -69,6 +69,26 @@ body {
     align-items: center;
 }
 
+.puzzle-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 180px;
+    width: 180px;
+    height: fit-content;
+    padding: 10px;
+    border: 1px solid var(--text-main);
+    border-radius: 6px;
+    background: var(--bg-main);
+    overflow-y: auto;
+    text-align: center;
+}
+
+.puzzle-controls p { width: 100%; font-size: 14px; }
+.puzzle-turn { font-weight: bold; }
+.puzzle-hint-status { min-height: 2.5em; font-size: 12px !important; }
+
 .ui-btn {
     width: 100%;
     background-color: var(--btn-bg);
@@ -439,6 +459,19 @@ body.analysis-mode .move-list-container { width: 300px; }
     border: 2px solid var(--text-main);
 }
 
+.popup-box.welcome-popup {
+    align-items: stretch;
+    width: min(520px, calc(100vw - 32px));
+    min-width: 0;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+}
+
+.welcome-content h2 { margin-bottom: 4px; }
+.welcome-content p { line-height: 1.5; }
+.welcome-content ul { padding-left: 22px; line-height: 1.6; }
+.welcome-popup > .ui-btn { align-self: center; width: min(220px, 100%); }
+
 /* Specific border override for Pineapple popup */
 body.theme-pineapple .popup-box {
     border-color: #F1C40F;
@@ -469,12 +502,18 @@ body.theme-pineapple .popup-box {
     border-radius: 50%;
 }
 
+.square.puzzle-hint {
+    position: relative;
+    box-shadow: inset 0 0 0 5px rgba(255, 190, 0, 0.95);
+}
+
 @media (min-width: 901px) and (max-width: 1250px) {
     .sidebar { width: 160px; padding: 14px; }
     .main-content { padding: 12px; gap: 12px; }
     .board-wrapper { height: min(54vmin, 500px); }
     .chessboard { width: min(54vmin, 500px); height: min(54vmin, 500px); }
     .move-list-container { width: 230px; height: min(54vmin, 500px); }
+    .puzzle-controls { flex-basis: 160px; width: 160px; }
     body.analysis-mode .move-list-container { width: 250px; }
 }
 
@@ -484,12 +523,14 @@ body.theme-pineapple .popup-box {
     .sidebar {
         width: 100%;
         flex-direction: row;
+        flex-wrap: wrap;
         justify-content: center;
         padding: 10px;
         border-right: 0;
         border-bottom: 1px solid black;
     }
     .sidebar .ui-btn { width: auto; min-width: 0; }
+    .sidebar > .ui-btn { flex: 0 1 auto; }
     .main-content { flex-direction: column; padding: 12px; gap: 12px; }
     .board-wrapper { width: min(90vw, 640px); height: auto; }
     .chessboard { width: calc(100% - 40px); height: auto; aspect-ratio: 1; }
@@ -503,5 +544,10 @@ body.theme-pineapple .popup-box {
     }
     .move-list-container,
     body.analysis-mode .move-list-container { width: min(90vw, 640px); }
+    .puzzle-controls {
+        flex: none;
+        width: min(90vw, 640px);
+        height: auto;
+        max-height: none;
+    }
 }
-
